@@ -25,12 +25,15 @@ class Attention(nn.Module):
 
 
 class NonLocalBlock(nn.Module):
-    def __init__(self, in_channels, tau=30):
+    def __init__(self, in_channels, down_ratio=4, tau=30):
         super().__init__()
         self.tau = tau  # 温度参数τ设为30
+        self.down_ratio = down_ratio
         # 卷积层
-        self.conv_q = nn.Conv2d(in_channels, in_channels, kernel_size=1)
-        self.conv_k = nn.Conv2d(in_channels, in_channels, kernel_size=1)
+        self.conv_q = nn.Conv2d(in_channels, in_channels // self.down_ratio, kernel_size=1)
+        self.conv_k = nn.Conv2d(in_channels, in_channels // self.down_ratio, kernel_size=1)
+        self.conv_v = nn.Conv2d(in_channels, in_channels // self.down_ratio, kernel_size=1)
+        self.conv_o = nn.Conv2d(in_channels // self.down_ratio, in_channels, kernel_size=1)
 
     def forward(self, Q, K, V):
         B, C, H, W = Q.size()
@@ -38,23 +41,25 @@ class NonLocalBlock(nn.Module):
         # 过卷积层
         Q = self.conv_q(Q)
         K = self.conv_k(K)
+        V = self.conv_v(V)
 
         # 改变形状
-        Q = Q.permute(0, 2, 3, 1).contiguous().view(B, H * W, C)
-        K = K.view(B, C, H * W)
-        V = V.view(B, C, H * W)
+        Q = Q.view(B, C // self.down_ratio, H * W).permute(0, 2, 1).contiguous()
+        K = K.view(B, C // self.down_ratio, H * W).permute(0, 2, 1).contiguous()
+        V = V.view(B, C // self.down_ratio, H * W).permute(0, 2, 1).contiguous()
 
         # L-2归一化
-        Q = F.normalize(Q, p=2, dim=-1)  # 特征维度归一化
+        Q = F.normalize(Q, p=2, dim=1)  # 特征维度归一化
         K = F.normalize(K, p=2, dim=1)  # 通道维度归一化
 
         # 计算注意力分数
-        A = softmax(torch.matmul(Q, K) / self.tau)
+        A = softmax(torch.matmul(Q, K.transpose(-1, -2)) / self.tau,dim=-1)
 
         # 输出注意力结果
-        M = torch.matmul(A, V)
+        M = torch.matmul(A, V).permute(0, 2, 1).contiguous()
         # 恢复形状
-        M = M.view(B, C, H, W)
+        M = M.view(B, C // self.down_ratio, H, W)
+        M = self.conv_o(M)
         return A, M
 
 

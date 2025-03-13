@@ -18,22 +18,30 @@ class DecisionFuse(nn.Module):
 
         # excitation部分
         self.excitation = nn.Sequential(
-            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1),
-
+            nn.Conv2d(in_channels=3, out_channels=64, kernel_size=3, stride=1, padding=1),
+            nn.ConvTranspose2d(in_channels=64, out_channels=3, kernel_size=3, stride=1, padding=1),
+            nn.Softmax(dim=1)
         )
 
     def forward(self, rgb, thermal, fusion):
         # squeeze
-        v = self.nl_v(rgb, rgb, rgb)
-        t = self.nl_fused(thermal, thermal, thermal)
-        f = self.nl_t(fusion, fusion, fusion)
-
-        pass
+        _, v = self.nl_v(rgb, rgb, rgb)
+        _, t = self.nl_fused(thermal, thermal, thermal)
+        _, f = self.nl_t(fusion, fusion, fusion)
+        v = v.sum(dim=1, keepdim=True)
+        t = t.sum(dim=1, keepdim=True)
+        f = f.sum(dim=1, keepdim=True)
+        # excitation
+        squeeze = torch.cat((v, t, f), dim=1)
+        excitation = self.excitation(squeeze)
+        w_v, w_t, w_f = torch.split(excitation, 1, dim=1)
+        final = rgb * w_v + thermal * w_t + fusion * w_f
+        return final
 
 
 if __name__ == "__main__":
-    rgb = torch.randn(4, 64, 135, 240)
-    thermal = torch.randn(4, 64, 135, 240)
-    fusion = torch.randn(4, 64, 135, 240)
-    model = DecisionFuse()
-    print(model(rgb, thermal, fusion))
+    rgb = torch.randn(1, 64, 135, 240).to(torch.device('cuda:0'))
+    thermal = torch.randn(1, 64, 135, 240).to(torch.device('cuda:0'))
+    fusion = torch.randn(1, 64, 135, 240).to(torch.device('cuda:0'))
+    model = DecisionFuse().to(torch.device('cuda:0'))
+    print(model(rgb, thermal, fusion).shape)

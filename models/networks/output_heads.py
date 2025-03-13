@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from torch import nn
 
 
@@ -12,9 +8,10 @@ def fill_fc_weights(layers):
                 nn.init.constant_(m.bias, 0)
 
 
-class BaseModel(nn.Module):
+class OutputHeads(nn.Module):
     def __init__(self, heads, head_convs, num_stacks, last_channel, opt=None):
-        super(BaseModel, self).__init__()
+        super().__init__()
+        self.opt = opt
         if opt is not None and opt.head_kernel != 3:
             print('Using head kernel:', opt.head_kernel)
             head_kernel = opt.head_kernel
@@ -65,29 +62,33 @@ class BaseModel(nn.Module):
                     fill_fc_weights(fc)
             self.__setattr__(head, fc)
 
-    def img2feats(self, x):
-        raise NotImplementedError
-
-    def imgpre2feats(self, x, pre_img=None, pre_hm=None):
-        raise NotImplementedError
-
-    def forward(self, x, pre_img=None, pre_hm=None):
-        if (pre_hm is not None) or (pre_img is not None):
-            feats = self.imgpre2feats(x, pre_img, pre_hm)
+    def forward(self, feats):
+        out = []
+        if self.opt.model_output_list:
+            for s in range(self.num_stacks):
+                z = []
+                for head in sorted(self.heads):
+                    z.append(self.__getattr__(head)(feats[s]))
+                out.append(z)
         else:
-            feats = self.img2feats(x)
-        return feats
-        # out = []
-        # if self.opt.model_output_list:
-        #     for s in range(self.num_stacks):
-        #         z = []
-        #         for head in sorted(self.heads):
-        #             z.append(self.__getattr__(head)(feats[s]))
-        #         out.append(z)
-        # else:
-        #     for s in range(self.num_stacks):
-        #         z = {}
-        #         for head in self.heads:
-        #             z[head] = self.__getattr__(head)(feats[s])
-        #         out.append(z)
-        # return out
+            for s in range(self.num_stacks):
+                z = {}
+                for head in self.heads:
+                    z[head] = self.__getattr__(head)(feats[s])
+                out.append(z)
+        return out
+
+
+if __name__ == '__main__':
+    import torch
+    from tools.opts import opts
+
+    opt = opts().init()
+    feats = [torch.randn(4, 64, 136, 240)]
+    model = OutputHeads(heads={'hm': 2, 'ltrb_amodal': 4, 'reg': 2, 'tracking': 2, 'wh': 2},
+                        head_convs={'hm': [256], 'ltrb_amodal': [256], 'reg': [256], 'tracking': [256],
+                                    'wh': [256]},
+                        num_stacks=1, last_channel=64, opt=opt)
+    output = model(feats)[-1]
+    for each in output:
+        print(each, output[each].shape)
