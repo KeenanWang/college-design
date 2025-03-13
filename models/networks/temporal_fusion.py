@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 from torch import nn
 
 from models.networks.attention import MultiHeadAttention
@@ -32,6 +33,7 @@ class TemporalFusionModule(nn.Module):
         # 解码为原来的形状
         t_mix = t_mix.permute(0, 2, 1).view(b, self.embedding_dim, h // self.embedding_dim,
                                             w // self.embedding_dim).contiguous()
+        t_mix = F.interpolate(t_mix, size=(h, w), mode='bilinear', align_corners=True)
         return t_mix
 
 if __name__ == '__main__':

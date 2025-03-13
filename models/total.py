@@ -2,7 +2,6 @@ from torch import nn
 
 from models.fusionbranch import FusionBranch
 from models.networks.decisionfuse import DecisionFuse
-from models.networks.modality_mix import ModalityMix
 from models.networks.output_heads import OutputHeads
 from models.networks.temporal_fusion import TemporalFusionModule
 from models.rgbbranch import RgbBranch
@@ -59,9 +58,9 @@ class Total(nn.Module):
             temporal_fusion_thermal += hm_pre
 
         # 过各自分支
-        rgb_branch = self.rgb_branch(temporal_fusion_rgb)
-        thermal_branch = self.thermal_branch(temporal_fusion_thermal)
-        modality_fusion = self.fusion_branch(rgb_branch, thermal_branch)
+        rgb_branch = self.rgb_branch(temporal_fusion_rgb)[-1]
+        thermal_branch = self.thermal_branch(temporal_fusion_thermal)[-1]
+        modality_fusion = self.fusion_branch(temporal_fusion_rgb, temporal_fusion_thermal)[-1]
 
         # 决策融合
         decision_fuse = self.decision_fuse(rgb=rgb_branch, thermal=thermal_branch, fusion=modality_fusion)
@@ -74,5 +73,13 @@ class Total(nn.Module):
 
 if __name__ == '__main__':
     from tools.opts import opts
+    import torch
 
     opt = opts().init()
+    rgb = torch.randn(1, 3, 544, 960)
+    thermal = torch.randn(1, 3, 544, 960)
+    hm = torch.randn(1, 1, 544, 960)
+    model = Total(opt)
+    output = model(rgb, thermal, rgb, thermal, hm)[-1]
+    for each in output:
+        print(each, output[each].shape)

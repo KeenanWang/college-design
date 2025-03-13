@@ -11,6 +11,8 @@ class FusionBranch(nn.Module):
 
     def __init__(self, opt):
         super().__init__()
+        # 降维
+        self.cnn_down = nn.Conv2d(in_channels=16, out_channels=3, kernel_size=1)
         # 模态融合器
         self.modality_mix = ModalityMix()
         # DLA网络
@@ -19,7 +21,9 @@ class FusionBranch(nn.Module):
                           opt=opt)
 
     def forward(self, rgb, thermal):
-        fuse = self.modality_mix(rgb, thermal)
+        rgb_down = self.cnn_down(rgb)
+        thermal_down = self.cnn_down(thermal)
+        fuse = self.modality_mix(rgb_down, thermal_down)
         final = self.dcn(fuse)
         return final
 
@@ -29,7 +33,7 @@ if __name__ == '__main__':
     from tools.opts import opts
 
     opt = opts().init()
-    rgb = torch.randn(1, 3, 544, 960)
-    thermal = torch.randn(1, 3, 544, 960)
+    rgb = torch.randn(1, 16, 544, 960)
+    thermal = torch.randn(1, 16, 544, 960)
     model = FusionBranch(opt=opt)
     print(model(rgb, thermal))
