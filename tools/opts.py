@@ -11,7 +11,7 @@ class opts(object):
     def __init__(self):
         self.parser = argparse.ArgumentParser()
         # basic experiment setting
-        self.parser.add_argument('task', default='tracking',
+        self.parser.add_argument('task', default='',
                                  help='ctdet | ddd | multi_pose '
                                       '| tracking or combined with ,')
         self.parser.add_argument('--dataset', default='coco',
@@ -42,7 +42,7 @@ class opts(object):
         # system
         self.parser.add_argument('--gpus', default='0',
                                  help='-1 for CPU, use comma for multiple gpus')
-        self.parser.add_argument('--num_workers', type=int, default=4,
+        self.parser.add_argument('--num_workers', type=int, default=0,
                                  help='dataloader threads. 0 for single-thread.')
         self.parser.add_argument('--not_cuda_benchmark', action='store_true',
                                  help='disable when the input size is not fixed.')
@@ -123,7 +123,7 @@ class opts(object):
                                  help='when to save the model to disk.')
         self.parser.add_argument('--num_epochs', type=int, default=70,
                                  help='total training epochs.')
-        self.parser.add_argument('--batch_size', type=int, default=32,
+        self.parser.add_argument('--batch_size', type=int, default=1,
                                  help='batch size')
         self.parser.add_argument('--master_batch_size', type=int, default=-1,
                                  help='batch size on the master gpu.')
@@ -145,6 +145,7 @@ class opts(object):
         self.parser.add_argument('--dense_reg', type=int, default=1, help='')
 
         # test
+        self.parser.add_argument('--test_mot_rgbt', type=bool, default=False)
         self.parser.add_argument('--flip_test', action='store_true',
                                  help='flip data augmentation.')
         self.parser.add_argument('--test_scales', type=str, default='1',
@@ -249,6 +250,8 @@ class opts(object):
         self.parser.add_argument('--nuscenes_att_weight', type=float, default=1)
         self.parser.add_argument('--velocity', action='store_true')
         self.parser.add_argument('--velocity_weight', type=float, default=1)
+        # modal
+        self.parser.add_argument('--modal', type=str, default="RGB-T")
 
         # custom dataset
         self.parser.add_argument('--custom_dataset_img_path', default='')
@@ -275,7 +278,8 @@ class opts(object):
             [int(i) for i in opt.ignore_loaded_cats.split(',')] \
                 if opt.ignore_loaded_cats != '' else []
 
-        opt.num_workers = max(opt.num_workers, 2 * len(opt.gpus))
+        # opt.num_workers = max(opt.num_workers, 2 * len(opt.gpus))
+        opt.num_workers = 0
         opt.pre_img = False
         if 'tracking' in opt.task:
             print('Running tracking')

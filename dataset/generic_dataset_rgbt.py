@@ -18,6 +18,9 @@ from utils.image import get_affine_transform, affine_transform
 from utils.image import gaussian_radius, draw_umich_gaussian
 import copy
 
+
+
+
 class GenericDataset(data.Dataset):
   is_fusion_dataset = False
   default_resolution = None
@@ -71,40 +74,43 @@ class GenericDataset(data.Dataset):
         for image in self.coco.dataset['images']:
           self.video_to_images[image['video_id']].append(image)
         #记录不同视频下所有的图片
-      self.img_dir = img_dir
+      self.img_dir = img_dir                #/home/oil/Wangqianwu/MOTDataset/MOT(RGBT)/images/train
 
   def __getitem__(self, index):
     opt = self.opt
-    img, anns, img_info, img_path = self._load_data(index)
+    vi_img, ir_img, anns, img_info, vi_img_path, ir_img_path = self._load_data(index)
 
-    height, width = img.shape[0], img.shape[1]
-    c = np.array([img.shape[1] / 2., img.shape[0] / 2.], dtype=np.float32)
-    s = max(img.shape[0], img.shape[1]) * 1.0 if not self.opt.not_max_crop \
-      else np.array([img.shape[1], img.shape[0]], np.float32)
+    height, width = vi_img.shape[0], vi_img.shape[1]
+    c = np.array([vi_img.shape[1] / 2., vi_img.shape[0] / 2.], dtype=np.float32)
+    s = max(vi_img.shape[0], vi_img.shape[1]) * 1.0 if not self.opt.not_max_crop \
+      else np.array([vi_img.shape[1], vi_img.shape[0]], np.float32)
     aug_s, rot, flipped = 1, 0, 0
     if self.split == 'train':
       c, aug_s, rot = self._get_aug_param(c, s, width, height)
       s = s * aug_s
       if np.random.random() < opt.flip:
         flipped = 1
-        img = img[:, ::-1, :]
+        vi_img = vi_img[:, ::-1, :]
+        ir_img = ir_img[:, ::-1, :]
         anns = self._flip_anns(anns, width)
 
     trans_input = get_affine_transform(
       c, s, rot, [opt.input_w, opt.input_h])
     trans_output = get_affine_transform(
       c, s, rot, [opt.output_w, opt.output_h])
-    inp = self._get_input(img, trans_input)
-    ret = {'image': inp}
+    vi_inp = self._get_input(vi_img, trans_input)
+    ir_inp = self._get_input(ir_img, trans_input)
+    ret = {'vi_image': vi_inp,'ir_image': ir_inp}
     gt_det = {'bboxes': [], 'scores': [], 'clses': [], 'cts': []}
 
     pre_cts, track_ids = None, None
     if opt.tracking:
-      pre_image, pre_anns, frame_dist = self._load_pre_data(
+      pre_vi_image, pre_ir_image, pre_anns, frame_dist = self._load_pre_data(
         img_info['video_id'], img_info['frame_id'], 
         img_info['sensor_id'] if 'sensor_id' in img_info else 1)
       if flipped:
-        pre_image = pre_image[:, ::-1, :].copy()
+        pre_vi_image = pre_vi_image[:, ::-1, :].copy()
+        pre_ir_image = pre_ir_image[:, ::-1, :].copy()
         pre_anns = self._flip_anns(pre_anns, width)
       if opt.same_aug_pre and frame_dist != 0:
         trans_input_pre = trans_input 
@@ -117,10 +123,14 @@ class GenericDataset(data.Dataset):
           c_pre, s_pre, rot, [opt.input_w, opt.input_h])
         trans_output_pre = get_affine_transform(
           c_pre, s_pre, rot, [opt.output_w, opt.output_h])
-      pre_img = self._get_input(pre_image, trans_input_pre)
+      pre_vi_img = self._get_input(pre_vi_image, trans_input_pre)
+      pre_ir_img = self._get_input(pre_ir_image, trans_input_pre)
+
       pre_hm, pre_cts, track_ids = self._get_pre_dets(
         pre_anns, trans_input_pre, trans_output_pre)
-      ret['pre_img'] = pre_img
+      
+      ret['pre_vi_img'] = pre_vi_img
+      ret['pre_ir_img'] = pre_ir_img
       if opt.pre_hm:
         ret['pre_hm'] = pre_hm
     
@@ -146,7 +156,7 @@ class GenericDataset(data.Dataset):
     if self.opt.debug > 0:
       gt_det = self._format_gt_det(gt_det)
       meta = {'c': c, 's': s, 'gt_det': gt_det, 'img_id': img_info['id'],
-              'img_path': img_path, 'calib': calib,
+              'vi_img_path': vi_img_path,'ir_img_path': ir_img_path, 'calib': calib,
               'flipped': flipped}
       ret['meta'] = meta
     return ret
@@ -160,20 +170,23 @@ class GenericDataset(data.Dataset):
 
   def _load_image_anns(self, img_id, coco, img_dir):
     img_info = coco.loadImgs(ids=[img_id])[0]
-    file_name = img_info['file_name']
-    img_path = os.path.join(img_dir, file_name)
+    vi_file_name = img_info['vi_file_name']
+    ir_file_name = img_info['ir_file_name']
+    vi_img_path = os.path.join(img_dir, vi_file_name)
+    ir_img_path = os.path.join(img_dir, ir_file_name)
     ann_ids = coco.getAnnIds(imgIds=[img_id])
     anns = copy.deepcopy(coco.loadAnns(ids=ann_ids))
-    img = cv2.imread(img_path)
-    return img, anns, img_info, img_path
+    vi_img = cv2.imread(vi_img_path)
+    ir_img = cv2.imread(ir_img_path)
+    return vi_img, ir_img, anns, img_info, vi_img_path, ir_img_path
 
   def _load_data(self, index):
     coco = self.coco
     img_dir = self.img_dir
     img_id = self.images[index]
-    img, anns, img_info, img_path = self._load_image_anns(img_id, coco, img_dir)
+    vi_img, ir_img, anns, img_info, vi_img_path, ir_image_path = self._load_image_anns(img_id, coco, img_dir)
 
-    return img, anns, img_info, img_path
+    return vi_img, ir_img, anns, img_info, vi_img_path, ir_image_path
 
 
   def _load_pre_data(self, video_id, frame_id, sensor_id=1):
@@ -200,8 +213,8 @@ class GenericDataset(data.Dataset):
     rand_id = np.random.choice(len(img_ids))
     img_id, pre_frame_id = img_ids[rand_id]
     frame_dist = abs(frame_id - pre_frame_id)
-    img, anns, _, _ = self._load_image_anns(img_id, self.coco, self.img_dir)
-    return img, anns, frame_dist
+    pre_vi_img,pre_ir_img, anns, _, _, _= self._load_image_anns(img_id, self.coco, self.img_dir)
+    return pre_vi_img, pre_ir_img, anns, frame_dist
 
 
   def _get_pre_dets(self, anns, trans_input, trans_output):

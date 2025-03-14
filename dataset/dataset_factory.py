@@ -8,14 +8,15 @@ import numpy as np
 import json
 import os
 
-from .dataset_tools.coco import COCO
-from .dataset_tools.kitti import KITTI
-from .dataset_tools.coco_hp import COCOHP
-from .dataset_tools.mot import MOT
-from .dataset_tools.nuscenes import nuScenes
-from .dataset_tools.crowdhuman import CrowdHuman
-from .dataset_tools.kitti_tracking import KITTITracking
-from .dataset_tools.custom_dataset import CustomDataset
+from .datasets.coco import COCO
+from .datasets.kitti import KITTI
+from .datasets.coco_hp import COCOHP
+from .datasets.mot import MOT
+from .datasets.mot_rgbt import MOT_RGBT
+from .datasets.nuscenes import nuScenes
+from .datasets.crowdhuman import CrowdHuman
+from .datasets.kitti_tracking import KITTITracking
+from .datasets.custom_dataset import CustomDataset
 
 dataset_factory = {
   'custom': CustomDataset,
@@ -23,6 +24,7 @@ dataset_factory = {
   'kitti': KITTI,
   'coco_hp': COCOHP,
   'mot': MOT,
+  'mot_rgbt':MOT_RGBT,
   'nuscenes': nuScenes,
   'crowdhuman': CrowdHuman,
   'kitti_tracking': KITTITracking,
