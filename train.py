@@ -6,7 +6,7 @@ import torchvision.utils as vutils  # 新增导入
 from dataset.dataset_factory import get_dataset
 from models.genericloss import GenericLoss
 from models.total import Total
-from tools.opts import opts
+from utils.opts import opts
 
 opt = opts().parse()
 

@@ -81,7 +81,7 @@ class OutputHeads(nn.Module):
 
 if __name__ == '__main__':
     import torch
-    from tools.opts import opts
+    from utils.opts import opts
 
     opt = opts().init()
     feats = [torch.randn(4, 64, 136, 240)]

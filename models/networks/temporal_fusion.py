@@ -37,7 +37,7 @@ class TemporalFusionModule(nn.Module):
         return t_mix
 
 if __name__ == '__main__':
-    from tools.opts import opts
+    from utils.opts import opts
 
     opt = opts().init()
     images = torch.randn(4, 16, 544, 960)

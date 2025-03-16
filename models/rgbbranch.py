@@ -1,10 +1,7 @@
 import torch
-import torch.nn.functional as F
 from torch import nn
 
-from models.networks.attention import MultiHeadAttention
 from models.networks.backbones.dla import DLASeg
-from models.networks.embedding_layer import EmbeddingLayer
 
 
 class RgbBranch(nn.Module):
@@ -58,7 +55,7 @@ class RgbBranch(nn.Module):
 
 
 if __name__ == '__main__':
-    from tools.opts import opts
+    from utils.opts import opts
 
     opt = opts().init()
     images = torch.randn(4, 16, 544, 960)

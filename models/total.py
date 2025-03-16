@@ -72,7 +72,7 @@ class Total(nn.Module):
 
 
 if __name__ == '__main__':
-    from tools.opts import opts
+    from utils.opts import opts
     import torch
 
     opt = opts().init()
