@@ -1,7 +1,7 @@
 from torch import nn
 
 from models.fusionbranch import FusionBranch
-from models.networks.decisionfuse import DecisionFuse
+from models.networks.decision_fuse import DecisionFuse
 from models.networks.output_heads import OutputHeads
 from models.networks.temporal_fusion import TemporalFusionModule
 from models.rgbbranch import RgbBranch

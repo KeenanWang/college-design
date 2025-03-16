@@ -6,19 +6,37 @@ class ModalityMix(nn.Module):
     def __init__(self):
         super().__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc_1 = nn.Linear(3, 3)
+        # rgb提取
         self.fc_v = nn.Linear(3, 3)
+
+        # 融合
+        self.fc_mix = nn.Linear(3, 3)
+        self.fc_mix_v = nn.Linear(3, 3)
+        self.fc_mix_t = nn.Linear(3, 3)
+
+        # thermal提取
         self.fc_t = nn.Linear(3, 3)
 
     def forward(self, rgb, thermal):
+        # rgb分支
+        rgb_v = self.avg_pool(rgb).squeeze(-1).squeeze(-1)
+        rgb_v = self.fc_v(rgb_v)
+        rgb_v = torch.softmax(rgb_v, dim=1).unsqueeze(-1).unsqueeze(-1) * rgb
+
+        # thermal分支
+        thermal_t = self.avg_pool(thermal).squeeze(-1).squeeze(-1)
+        thermal_t = self.fc_t(thermal_t)
+        thermal_t = torch.softmax(thermal_t, dim=1).unsqueeze(-1).unsqueeze(-1) * thermal
+
+        # fuse分支
         # Squeeze: 全局平均池化
         squeeze = self.avg_pool(rgb + thermal)  # [1,3,1,1]
         squeeze = squeeze.squeeze(-1).squeeze(-1)  # [1,3]
 
         # Excitation: 全连接层
-        fc = self.fc_1(squeeze)  # [1,3]
-        v = self.fc_v(fc)  # [1,3]
-        t = self.fc_t(fc)  # [1,3]
+        fc = self.fc_mix(squeeze)  # [1,3]
+        v = self.fc_mix_v(fc)  # [1,3]
+        t = self.fc_mix_t(fc)  # [1,3]
 
         # 拼接并计算权重
         combined = torch.cat([v.unsqueeze(1), t.unsqueeze(1)], dim=1)  # [1,2,3]
@@ -30,7 +48,7 @@ class ModalityMix(nn.Module):
         t_weight = t_weight.unsqueeze(-1).unsqueeze(-1)  # [1,3,1,1]
 
         # 加权融合
-        f_fuse = rgb * v_weight + thermal * t_weight  # [1,3,544,960]
+        f_fuse = rgb_v * v_weight + thermal_t * t_weight  # [1,3,544,960]
         return f_fuse
 
 
