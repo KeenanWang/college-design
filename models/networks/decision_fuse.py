@@ -32,16 +32,27 @@ class DecisionFuse(nn.Module):
         t = t.sum(dim=1, keepdim=True)
         f = f.sum(dim=1, keepdim=True)
 
+        # softmax
+        v_s = torch.softmax(v, dim=1)
+        t_s = torch.softmax(t, dim=1)
+        f_s = torch.softmax(f, dim=1)
+
         # 中期fuse
-        rgb_m = v * rgb
-        thermal_m = t * thermal
-        fusion_m = f * fusion
+        rgb_m = v_s * rgb
+        thermal_m = t_s * thermal
+        fusion_m = f_s * fusion
 
         # excitation
         squeeze = torch.cat((v, t, f), dim=1)
         excitation = self.excitation(squeeze)
         w_v, w_t, w_f = torch.split(excitation, 1, dim=1)
-        final = rgb_m * w_v + thermal_m * w_t + fusion_m * w_f
+
+        rgb_fuse = rgb_m + rgb * w_v
+        thermal_fuse = thermal_m + thermal * w_t
+        fusion_fuse = fusion_m + fusion * w_f
+
+        # 最后融合
+        final = rgb_fuse + thermal_fuse + fusion_fuse
         return final
 
 

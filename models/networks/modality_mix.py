@@ -48,8 +48,12 @@ class ModalityMix(nn.Module):
         t_weight = t_weight.unsqueeze(-1).unsqueeze(-1)  # [1,3,1,1]
 
         # 加权融合
-        f_fuse = rgb_v * v_weight + thermal_t * t_weight  # [1,3,544,960]
-        return f_fuse
+        rgb_fuse = rgb * v_weight + rgb_v  # [1,3,544,960]
+        thermal_fuse = thermal * t_weight + thermal_t
+
+        # 最后融合
+        final = rgb_fuse + thermal_fuse
+        return final
 
 
 if __name__ == '__main__':
