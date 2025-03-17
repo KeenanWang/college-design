@@ -38,18 +38,18 @@ class Total(nn.Module):
 
     def forward(self, rgb, thermal, rgb_pre=None, thermal_pre=None, hm_pre=None):
         # 预处理
-        rgb = self.cnn_rgb(rgb)
-        thermal = self.cnn_t(thermal)
+        rgb_processed = self.cnn_rgb(rgb)
+        thermal_processed = self.cnn_t(thermal)
 
         # 时序融合
         if rgb_pre is not None and thermal_pre is not None:
             rgb_pre = self.cnn_rgb(rgb_pre)
             thermal_pre = self.cnn_t(thermal_pre)
-            temporal_fusion_rgb = self.temporal_fusion(rgb, rgb_pre)
-            temporal_fusion_thermal = self.temporal_fusion(thermal, thermal_pre)
+            temporal_fusion_rgb = self.temporal_fusion(rgb_processed, rgb_pre)
+            temporal_fusion_thermal = self.temporal_fusion(thermal_processed, thermal_pre)
         else:
-            temporal_fusion_rgb = self.temporal_fusion(rgb, rgb)
-            temporal_fusion_thermal = self.temporal_fusion(thermal, thermal)
+            temporal_fusion_rgb = self.temporal_fusion(rgb_processed, rgb_processed)
+            temporal_fusion_thermal = self.temporal_fusion(thermal_processed, thermal_processed)
 
         # 融合热力图
         if hm_pre is not None:
@@ -61,6 +61,8 @@ class Total(nn.Module):
         rgb_branch = self.rgb_branch(temporal_fusion_rgb)[-1]
         thermal_branch = self.thermal_branch(temporal_fusion_thermal)[-1]
         modality_fusion = self.fusion_branch(temporal_fusion_rgb, temporal_fusion_thermal)[-1]
+
+        del rgb_processed, thermal_processed, temporal_fusion_rgb, temporal_fusion_thermal
 
         # 决策融合
         decision_fuse = self.decision_fuse(rgb=rgb_branch, thermal=thermal_branch, fusion=modality_fusion)

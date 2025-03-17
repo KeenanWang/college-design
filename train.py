@@ -1,10 +1,14 @@
 import os
+import sys
+
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"  # 内存碎片清理
 import torch
 from torch.utils.tensorboard import SummaryWriter  # 新增导入
 import torchvision.utils as vutils  # 新增导入
 
 from dataset.dataset_factory import get_dataset
 from models.genericloss import GenericLoss
+from models.model_tools import save_model
 from models.total import Total
 from utils.opts import opts
 
@@ -31,7 +35,7 @@ data_loader = torch.utils.data.DataLoader(
     batch_size=opt.batch_size,
     shuffle=True,
     num_workers=opt.num_workers,
-    pin_memory=True,
+    pin_memory=False,
     drop_last=True
 )
 
@@ -48,9 +52,11 @@ Loss = GenericLoss(opt=opt)
 # 训练
 global_step = 0  # 新增全局步数计数器
 num_iters = len(data_loader) if opt.num_iters < 0 else opt.num_iters
+loss_min = sys.maxsize
 
 for epoch in range(opt.num_epochs):
     for iter_id, batch in enumerate(data_loader):
+        torch.cuda.empty_cache()  # 清除未使用的显存
         if iter_id >= num_iters:
             break
         # 数据迁移到设备
@@ -79,6 +85,10 @@ for epoch in range(opt.num_epochs):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
+        if loss.item() < loss_min:
+            loss_min = loss.item()
+            save_model(model=model, save_path='runs/best_model.pth', epoch=epoch, optimizer=optimizer)
 
         # TensorBoard日志记录 新增代码块
         if global_step % 100 == 0:  # 每100步记录一次标量
