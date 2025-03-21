@@ -2,14 +2,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import pycocotools.coco as coco
-from pycocotools.cocoeval import COCOeval
-import numpy as np
-import json
 import os
 from collections import defaultdict
-import sys
+
+import numpy as np
+
 from ..generic_dataset_rgbt import GenericDataset
+
 
 class MOT_RGBT(GenericDataset):
   num_categories = 2
