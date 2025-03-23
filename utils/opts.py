@@ -145,6 +145,8 @@ class opts(object):
         self.parser.add_argument('--dense_reg', type=int, default=1, help='')
         self.parser.add_argument('--distributed', action='store_true',
                                  help='enable distributed training')
+        self.parser.add_argument('--use_amp', action='store_true',
+                            help='enable automatic mixed precision')
         # test
         self.parser.add_argument('--test_mot_rgbt', type=bool, default=False)
         self.parser.add_argument('--flip_test', action='store_true',

@@ -70,13 +70,13 @@ def main():
         train_dataset,
         num_replicas=opt.world_size if opt.distributed else 1,
         rank=opt.rank,
-        shuffle=not opt.not_shuffle  # 📌 采样器控制shuffle
+        shuffle=True  # 📌 采样器控制shuffle
     ) if opt.distributed else None
 
     data_loader = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=opt.batch_size,
-        shuffle=(sampler is None),
+        shuffle=True,
         num_workers=opt.num_workers,
         pin_memory=True,  # 📌 建议开启加速数据传输
         sampler=sampler,

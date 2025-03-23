@@ -337,9 +337,18 @@ class DeformConv(nn.Module):
         self.conv = DCN(chi, cho, kernel_size=(3, 3), stride=1, padding=1, dilation=1, deformable_groups=1)
 
     def forward(self, x):
-        x = self.conv(x)
-        x = self.actf(x)
-        return x
+        from torch.cuda.amp import autocast
+        if x.dtype == torch.float16:
+            with autocast(enabled=False):  # 📌 禁用此部分的自动混合精度
+                x = x.float()  # 强制转换为 FP32
+                x = self.conv(x)
+                x = self.actf(x)
+                x = x.half()
+            return x
+        else:
+            x = self.conv(x)
+            x = self.actf(x)
+            return x
 
 
 class Conv(nn.Module):

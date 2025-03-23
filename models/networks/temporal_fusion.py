@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 from torch import nn
+from torch.utils.checkpoint import checkpoint
 
 from models.networks.attention import MultiHeadAttention
 from models.networks.embedding_layer import EmbeddingLayer
@@ -30,11 +31,13 @@ class TemporalFusionModule(nn.Module):
         x_pre += self.pos_embedding
         # 时序特征融合
         t_a, t_mix = self.temporal_mix(Q=x, K=x_pre, V=x_pre)
+        # t_a, t_mix = checkpoint(self.temporal_mix, x, x_pre, x_pre)
         # 解码为原来的形状
         t_mix = t_mix.permute(0, 2, 1).view(b, self.embedding_dim, h // self.embedding_dim,
                                             w // self.embedding_dim).contiguous()
         t_mix = F.interpolate(t_mix, size=(h, w), mode='bilinear', align_corners=True)
         return t_mix
+
 
 if __name__ == '__main__':
     from utils.opts import opts

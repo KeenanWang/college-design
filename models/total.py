@@ -1,6 +1,9 @@
 from torch import nn
+import torch
+from torch.utils.checkpoint import checkpoint
 
 from models.fusionbranch import FusionBranch
+from models.networks.backbones.dla import DLASeg
 from models.networks.decision_fuse import DecisionFuse
 from models.networks.output_heads import OutputHeads
 from models.networks.temporal_fusion import TemporalFusionModule
@@ -35,6 +38,13 @@ class Total(nn.Module):
                                         head_convs={'hm': [256], 'ltrb_amodal': [256], 'reg': [256], 'tracking': [256],
                                                     'wh': [256]},
                                         num_stacks=1, last_channel=64, opt=opt)
+        # DLA34深度特征提取网络
+        self.dla = DLASeg(num_layers=34, heads={'hm': 2, 'ltrb_amodal': 4, 'reg': 2, 'tracking': 2, 'wh': 2},
+                          head_convs={'hm': [256], 'ltrb_amodal': [256], 'reg': [256], 'tracking': [256], 'wh': [256]},
+                          opt=opt)
+        # 遍历所有参数，冻结dla网络
+        for name, param in self.dla.named_parameters():
+            param.requires_grad = False
 
     def forward(self, rgb, thermal, rgb_pre=None, thermal_pre=None, hm_pre=None):
         # 预处理
@@ -58,14 +68,21 @@ class Total(nn.Module):
             temporal_fusion_thermal += hm_pre
 
         # 过各自分支
-        rgb_branch = self.rgb_branch(temporal_fusion_rgb)[-1]
-        thermal_branch = self.thermal_branch(temporal_fusion_thermal)[-1]
-        modality_fusion = self.fusion_branch(temporal_fusion_rgb, temporal_fusion_thermal)[-1]
+        rgb_branch = self.rgb_branch(temporal_fusion_rgb)
+        thermal_branch = self.thermal_branch(temporal_fusion_thermal)
+        modality_fusion = self.fusion_branch(temporal_fusion_rgb, temporal_fusion_thermal)
+
+        # 过DLA网络
+        # with torch.no_grad():
+        rgb_branch = self.dla(rgb_branch)[-1]
+        thermal_branch = self.dla(thermal_branch)[-1]
+        modality_fusion = self.dla(modality_fusion)[-1]
 
         del rgb_processed, thermal_processed, temporal_fusion_rgb, temporal_fusion_thermal
 
         # 决策融合
-        decision_fuse = self.decision_fuse(rgb=rgb_branch, thermal=thermal_branch, fusion=modality_fusion)
+        # decision_fuse = self.decision_fuse(rgb_branch, thermal_branch, modality_fusion)
+        decision_fuse = checkpoint(self.decision_fuse, rgb_branch, thermal_branch, modality_fusion)
 
         # 输出头
         output = self.output_heads(feats=[decision_fuse])

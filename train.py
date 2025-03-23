@@ -1,5 +1,6 @@
 import os
 import sys
+from torch.cuda.amp import autocast, GradScaler
 
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"  # 内存碎片清理
 import torch
@@ -49,13 +50,18 @@ optimizer = torch.optim.Adam(model.parameters(), opt.lr)
 # 损失函数
 Loss = GenericLoss(opt=opt)
 
+# AMP
+scaler = GradScaler(enabled=opt.use_amp)
+
 # 训练
 global_step = 0  # 新增全局步数计数器
 num_iters = len(data_loader) if opt.num_iters < 0 else opt.num_iters
 loss_min = sys.maxsize
 
 for epoch in range(opt.num_epochs):
+    print(f"开始{epoch + 1}轮训练")
     for iter_id, batch in enumerate(data_loader):
+        print(f"第{iter_id + 1}batch")
         torch.cuda.empty_cache()  # 清除未使用的显存
         if iter_id >= num_iters:
             break
@@ -69,46 +75,39 @@ for epoch in range(opt.num_epochs):
         pre_ir_img = batch.get('pre_ir_img', None)
         pre_hm = batch.get('pre_hm', None)
 
-        output = model(
-            batch['vi_image'],
-            batch['ir_image'],
-            pre_vi_img,
-            pre_ir_img,
-            pre_hm
-        )
+        with autocast(opt.use_amp):
+            output = model(
+                batch['vi_image'],
+                batch['ir_image'],
+                pre_vi_img,
+                pre_ir_img,
+                pre_hm
+            )
 
-        # 计算损失
-        loss, loss_stats = Loss(output, batch)
-        loss = loss.mean()
+            # 计算损失
+            loss, loss_stats = Loss(output, batch)
+            loss = loss.mean()
 
         # 反向传播
         optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        scaler.scale(loss).backward()
+
+        # 更新
+        scaler.step(optimizer)
+        scaler.update()
 
         if loss.item() < loss_min:
             loss_min = loss.item()
             save_model(model=model, save_path='runs/best_model.pth', epoch=epoch, optimizer=optimizer)
 
         # TensorBoard日志记录 新增代码块
-        if global_step % 100 == 0:  # 每100步记录一次标量
+        if global_step % 50 == 0:  # 每50步记录一次标量
             # 记录损失
             for name, value in loss_stats.items():
                 writer.add_scalar(f"Loss/{name}", value.mean(), global_step)
 
             # 记录学习率
             writer.add_scalar("Params/lr", optimizer.param_groups[0]['lr'], global_step)
-
-        if global_step % 500 == 0:  # 每500步记录一次图像
-            with torch.no_grad():
-                # 可视化输入和输出图像（假设输出包含融合图像）
-                vi_grid = vutils.make_grid(batch['vi_image'][:4], normalize=True)
-                ir_grid = vutils.make_grid(batch['ir_image'][:4], normalize=True)
-                fusion_grid = vutils.make_grid(output['fusion'][:4], normalize=True)  # 需要确认输出键名
-
-                writer.add_image('Images/Visible', vi_grid, global_step)
-                writer.add_image('Images/Infrared', ir_grid, global_step)
-                writer.add_image('Images/Fusion', fusion_grid, global_step)
 
         global_step += 1  # 更新全局步数
 
