@@ -75,7 +75,7 @@ for epoch in range(opt.num_epochs):
             pre_vi_img,
             pre_ir_img,
             pre_hm
-        )[-1]
+        )
 
         # 计算损失
         loss_stats, loss = Loss(output, batch)

@@ -68,7 +68,7 @@ class Total(nn.Module):
         decision_fuse = self.decision_fuse(rgb=rgb_branch, thermal=thermal_branch, fusion=modality_fusion)
 
         # 输出头
-        output = self.output_heads(feats=decision_fuse)
+        output = self.output_heads(feats=[decision_fuse])
 
         return output
 
