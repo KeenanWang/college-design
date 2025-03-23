@@ -78,7 +78,7 @@ for epoch in range(opt.num_epochs):
         )
 
         # 计算损失
-        loss_stats, loss = Loss(output, batch)
+        loss, loss_stats = Loss(output, batch)
         loss = loss.mean()
 
         # 反向传播
