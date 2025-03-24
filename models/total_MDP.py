@@ -88,7 +88,7 @@ class Total_MDP(nn.Module):
         modality_fusion_dla = modality_fusion_dla.to('cuda:4')
 
         # 决策融合
-        decision_fuse = self.decision_fuse(rgb_branch, thermal_branch, modality_fusion)
+        decision_fuse = self.decision_fuse(rgb_branch_dla, thermal_branch_dla, modality_fusion_dla)
         # decision_fuse = checkpoint(self.decision_fuse, rgb_branch_dla, thermal_branch_dla, modality_fusion_dla)
         decision_fuse = decision_fuse.to('cuda:5')
 

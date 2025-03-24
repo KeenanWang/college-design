@@ -26,8 +26,8 @@ Dataset = get_dataset(opt.dataset)
 # 参数设置
 opt = opts().update_dataset_info_and_set_heads(opt, Dataset)
 print(opt)
-if not opt.not_set_cuda_env:
-    os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpus_str
+# if not opt.not_set_cuda_env:
+#     os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpus_str
 # opt.device = torch.device('cuda' if opt.gpus[0] >= 0 else 'cpu')
 
 # 加载器
