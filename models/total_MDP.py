@@ -91,6 +91,7 @@ class Total_MDP(nn.Module):
 
 
 def print_gpu_memory():
+    import torch
     if torch.cuda.is_available():
         num_gpus = torch.cuda.device_count()
         print(f"=== {num_gpus} GPU(s) Memory Usage ===")
