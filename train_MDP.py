@@ -42,7 +42,7 @@ data_loader = torch.utils.data.DataLoader(
 
 # 模型
 model = Total_MDP(opt=opt)
-model = torch.compile(model)
+# model = torch.compile(model)
 
 # 优化器
 optimizer = torch.optim.Adam(model.parameters(), opt.lr)

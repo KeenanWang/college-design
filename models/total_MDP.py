@@ -23,19 +23,20 @@ class Total_MDP(nn.Module):
         self.cnn_hm = nn.Conv2d(in_channels=1, out_channels=self.embedding_dim, kernel_size=1, stride=1).to('cuda:0')
         # 时序融合模块，放到1号GPU
         self.temporal_fusion = TemporalFusionModule().to('cuda:1')
-        # RGB分支，2号
-        self.rgb_branch = RgbBranch(opt=opt).to('cuda:2')
-        # 热成像分支，2号
-        self.thermal_branch = ThermalBranch(opt=opt).to('cuda:2')
-        # 模态融合分支，2号
-        self.fusion_branch = FusionBranch(opt=opt).to('cuda:2')
-        # DLA34深度特征提取网络,2
+        # RGB分支，3号
+        self.rgb_branch = RgbBranch(opt=opt).to('cuda:3')
+        # 热成像分支，3号
+        self.thermal_branch = ThermalBranch(opt=opt).to('cuda:3')
+        # 模态融合分支，3号
+        self.fusion_branch = FusionBranch(opt=opt).to('cuda:3')
+        # DLA34深度特征提取网络,3
         self.dla = DLASeg(num_layers=34, heads={'hm': 2, 'ltrb_amodal': 4, 'reg': 2, 'tracking': 2, 'wh': 2},
                           head_convs={'hm': [256], 'ltrb_amodal': [256], 'reg': [256], 'tracking': [256], 'wh': [256]},
-                          opt=opt).to('cuda:2')
+                          opt=opt)
         # 遍历所有参数，冻结dla网络
         for name, param in self.dla.named_parameters():
             param.requires_grad = False
+        self.dla = self.dla.to('cuda:3')
         # 决策融合模块，4号
         self.decision_fuse = DecisionFuse().to('cuda:4')
         # 输出头，5号
