@@ -26,6 +26,8 @@ Dataset = get_dataset(opt.dataset)
 # 参数设置
 opt = opts().update_dataset_info_and_set_heads(opt, Dataset)
 # print(opt)
+if not opt.not_set_cuda_env:
+    os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpus_str
 print("可用的GPU数量：", torch.cuda.device_count())
 
 # 加载器
