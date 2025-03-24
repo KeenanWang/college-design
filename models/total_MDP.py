@@ -29,14 +29,14 @@ class Total_MDP(nn.Module):
         self.thermal_branch = ThermalBranch(opt=opt).to('cuda:2')
         # 模态融合分支，2号
         self.fusion_branch = FusionBranch(opt=opt).to('cuda:2')
-        # DLA34深度特征提取网络,3
+        # DLA34深度特征提取网络,2
         self.dla = DLASeg(num_layers=34, heads={'hm': 2, 'ltrb_amodal': 4, 'reg': 2, 'tracking': 2, 'wh': 2},
                           head_convs={'hm': [256], 'ltrb_amodal': [256], 'reg': [256], 'tracking': [256], 'wh': [256]},
                           opt=opt)
         # 遍历所有参数，冻结dla网络
         for name, param in self.dla.named_parameters():
             param.requires_grad = False
-        self.dla = self.dla.to('cuda:3')
+        self.dla = self.dla.to('cuda:2')
         # 决策融合模块，4号
         self.decision_fuse = DecisionFuse().to('cuda:4')
         # 输出头，5号
@@ -75,9 +75,6 @@ class Total_MDP(nn.Module):
         rgb_branch = self.rgb_branch(temporal_fusion_rgb)
         thermal_branch = self.thermal_branch(temporal_fusion_thermal)
         modality_fusion = self.fusion_branch(temporal_fusion_rgb, temporal_fusion_thermal)
-        rgb_branch = rgb_branch.to('cuda:3')
-        thermal_branch = thermal_branch.to('cuda:3')
-        modality_fusion = modality_fusion.to('cuda:3')
 
         # 过DLA网络
         rgb_branch_dla = self.dla(rgb_branch)[-1]
