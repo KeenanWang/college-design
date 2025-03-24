@@ -49,7 +49,7 @@ model = Total_MDP(opt=opt)
 optimizer = torch.optim.Adam(model.parameters(), opt.lr)
 
 # 损失函数
-Loss = GenericLoss(opt=opt).to("cuda:6")
+Loss = GenericLoss(opt=opt).to("cuda:4")
 
 # AMP
 scaler = GradScaler(enabled=opt.use_amp)
@@ -83,7 +83,7 @@ for epoch in range(opt.num_epochs):
                 pre_vi_img,
                 pre_ir_img,
                 pre_hm
-            )  # GPU7
+            ).to('cuda:4', non_blocking=True)
 
             # 计算损失
             loss, loss_stats = Loss(output, batch)
