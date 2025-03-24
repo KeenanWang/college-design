@@ -2,10 +2,11 @@ import os
 import sys
 
 from torch.cuda.amp import autocast, GradScaler
+from tqdm import tqdm  # 新增导入
 
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"  # 内存碎片清理
 import torch
-from torch.utils.tensorboard import SummaryWriter  # 新增导入
+from torch.utils.tensorboard import SummaryWriter
 
 from dataset.dataset_factory import get_dataset
 from models.genericloss import GenericLoss
@@ -16,7 +17,7 @@ from utils.opts import opts
 opt = opts().parse()
 
 # 初始化TensorBoard
-writer = SummaryWriter(log_dir=f'logs/exp_{opt.exp_id}')  # 新增代码
+writer = SummaryWriter(log_dir=f'logs/exp_{opt.exp_id}')
 
 # 数据集
 torch.manual_seed(opt.seed)
@@ -54,17 +55,23 @@ Loss = GenericLoss(opt=opt)
 scaler = GradScaler(enabled=opt.use_amp)
 
 # 训练
-global_step = 0  # 新增全局步数计数器
+global_step = 0
 num_iters = len(data_loader) if opt.num_iters < 0 else opt.num_iters
 loss_min = sys.maxsize
 
 for epoch in range(opt.num_epochs):
-    print(f"开始{epoch + 1}轮训练")
-    for iter_id, batch in enumerate(data_loader):
-        print(f"第{iter_id + 1}batch")
-        torch.cuda.empty_cache()  # 清除未使用的显存
+    print(f"\nEpoch {epoch + 1}/{opt.num_epochs}")
+
+    # 创建进度条
+    pbar = tqdm(data_loader, total=num_iters, desc=f"Epoch {epoch + 1}",
+                bar_format='{l_bar}{bar:20}{r_bar}{bar:-20b}')
+
+    for iter_id, batch in enumerate(pbar):  # 修改为迭代pbar
         if iter_id >= num_iters:
             break
+
+        torch.cuda.empty_cache()
+
         # 数据迁移到设备
         for k in batch:
             if k != 'meta':
@@ -91,26 +98,30 @@ for epoch in range(opt.num_epochs):
         # 反向传播
         optimizer.zero_grad()
         scaler.scale(loss).backward()
-
-        # 更新
         scaler.step(optimizer)
         scaler.update()
 
+        # 更新最小损失并保存模型
         if loss.item() < loss_min:
             loss_min = loss.item()
             save_model(model=model, save_path='runs/best_model.pth', epoch=epoch, optimizer=optimizer)
 
-        # TensorBoard日志记录 新增代码块
-        if global_step % 50 == 0:  # 每50步记录一次标量
-            # 记录损失
+        # TensorBoard日志记录
+        if global_step % 50 == 0:
             for name, value in loss_stats.items():
                 writer.add_scalar(f"Loss/{name}", value.mean(), global_step)
-
-            # 记录学习率
             writer.add_scalar("Params/lr", optimizer.param_groups[0]['lr'], global_step)
 
-        global_step += 1  # 更新全局步数
+        # 更新进度条信息
+        pbar.set_postfix({
+            'loss': f"{loss.item():.4f}",
+            'lr': f"{optimizer.param_groups[0]['lr']:.2e}",
+            'step': global_step
+        })
 
+        global_step += 1
         del output, loss, loss_stats
 
-writer.close()  # 关闭记录器
+    pbar.close()  # 关闭当前epoch的进度条
+
+writer.close()
