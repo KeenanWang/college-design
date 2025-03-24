@@ -68,8 +68,8 @@ class Total_MDP(nn.Module):
             temporal_fusion_rgb = temporal_fusion_rgb + hm_pre
             temporal_fusion_thermal = temporal_fusion_thermal + hm_pre
 
-        temporal_fusion_rgb = temporal_fusion_rgb.to('cuda:2')
-        temporal_fusion_thermal = temporal_fusion_thermal.to('cuda:2')
+        temporal_fusion_rgb = temporal_fusion_rgb.to('cuda:3')
+        temporal_fusion_thermal = temporal_fusion_thermal.to('cuda:3')
 
         # 过各自分支
         rgb_branch = self.rgb_branch(temporal_fusion_rgb)
