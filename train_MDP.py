@@ -83,7 +83,7 @@ for epoch in range(opt.num_epochs):
                 pre_vi_img,
                 pre_ir_img,
                 pre_hm
-            ).to('cuda:4', non_blocking=True)
+            )
 
             # 计算损失
             loss, loss_stats = Loss(output, batch)
