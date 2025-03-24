@@ -25,10 +25,8 @@ Dataset = get_dataset(opt.dataset)
 
 # 参数设置
 opt = opts().update_dataset_info_and_set_heads(opt, Dataset)
-print(opt)
-# if not opt.not_set_cuda_env:
-#     os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpus_str
-# opt.device = torch.device('cuda' if opt.gpus[0] >= 0 else 'cpu')
+# print(opt)
+print("可用的GPU数量：", torch.cuda.device_count())
 
 # 加载器
 data_loader = torch.utils.data.DataLoader(
@@ -48,7 +46,7 @@ model = Total_MDP(opt=opt)
 optimizer = torch.optim.Adam(model.parameters(), opt.lr)
 
 # 损失函数
-Loss = GenericLoss(opt=opt).to("cuda:5")
+Loss = GenericLoss(opt=opt).to("cuda:7")
 
 # AMP
 scaler = GradScaler(enabled=opt.use_amp)
@@ -68,7 +66,7 @@ for epoch in range(opt.num_epochs):
         # 数据迁移到设备
         for k in batch:
             if k != 'meta':
-                batch[k] = batch[k].to(device='cuda:0', non_blocking=True)
+                batch[k] = batch[k].to(device='cuda:4', non_blocking=True)
 
         # 前向传播
         pre_vi_img = batch.get('pre_vi_img', None)
@@ -82,7 +80,7 @@ for epoch in range(opt.num_epochs):
                 pre_vi_img,
                 pre_ir_img,
                 pre_hm
-            )  # GPU5
+            )  # GPU7
 
             # 计算损失
             loss, loss_stats = Loss(output, batch)

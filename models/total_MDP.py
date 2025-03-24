@@ -17,45 +17,43 @@ class Total_MDP(nn.Module):
     def __init__(self, opt):
         super().__init__()
         self.embedding_dim = 16
-        # 预处理部分，放到0号GPU
-        self.cnn_rgb = nn.Conv2d(in_channels=3, out_channels=self.embedding_dim, kernel_size=1, stride=1).to('cuda:0')
-        self.cnn_t = nn.Conv2d(in_channels=3, out_channels=self.embedding_dim, kernel_size=1, stride=1).to('cuda:0')
-        self.cnn_hm = nn.Conv2d(in_channels=1, out_channels=self.embedding_dim, kernel_size=1, stride=1).to('cuda:0')
-        # 时序融合模块，放到1号GPU
-        self.temporal_fusion = TemporalFusionModule().to('cuda:1')
-        # RGB分支，3号
-        self.rgb_branch = RgbBranch(opt=opt).to('cuda:3')
-        # 热成像分支，3号
-        self.thermal_branch = ThermalBranch(opt=opt).to('cuda:3')
-        # 模态融合分支，3号
-        self.fusion_branch = FusionBranch(opt=opt).to('cuda:3')
-        # DLA34深度特征提取网络,3
+        # 预处理部分，放到4号GPU
+        self.cnn_rgb = nn.Conv2d(in_channels=3, out_channels=self.embedding_dim, kernel_size=1, stride=1).to('cuda:4')
+        self.cnn_t = nn.Conv2d(in_channels=3, out_channels=self.embedding_dim, kernel_size=1, stride=1).to('cuda:4')
+        self.cnn_hm = nn.Conv2d(in_channels=1, out_channels=self.embedding_dim, kernel_size=1, stride=1).to('cuda:4')
+        # 时序融合模块，放到4号GPU
+        self.temporal_fusion = TemporalFusionModule().to('cuda:4')
+        # RGB分支，5号
+        self.rgb_branch = RgbBranch(opt=opt).to('cuda:5')
+        # 热成像分支，5号
+        self.thermal_branch = ThermalBranch(opt=opt).to('cuda:5')
+        # 模态融合分支，5号
+        self.fusion_branch = FusionBranch(opt=opt).to('cuda:5')
+        # DLA34深度特征提取网络,5
         self.dla = DLASeg(num_layers=34, heads={'hm': 2, 'ltrb_amodal': 4, 'reg': 2, 'tracking': 2, 'wh': 2},
                           head_convs={'hm': [256], 'ltrb_amodal': [256], 'reg': [256], 'tracking': [256], 'wh': [256]},
                           opt=opt)
         # 遍历所有参数，冻结dla网络
         for name, param in self.dla.named_parameters():
             param.requires_grad = False
-        self.dla = self.dla.to('cuda:3')
-        # 决策融合模块，4号
-        self.decision_fuse = DecisionFuse().to('cuda:4')
-        # 输出头，5号
+        self.dla = self.dla.to('cuda:5')
+        # 决策融合模块，6号
+        self.decision_fuse = DecisionFuse().to('cuda:6')
+        # 输出头，7号
         self.output_heads = OutputHeads(heads={'hm': 2, 'ltrb_amodal': 4, 'reg': 2, 'tracking': 2, 'wh': 2},
                                         head_convs={'hm': [256], 'ltrb_amodal': [256], 'reg': [256], 'tracking': [256],
                                                     'wh': [256]},
-                                        num_stacks=1, last_channel=64, opt=opt).to('cuda:5')
+                                        num_stacks=1, last_channel=64, opt=opt).to('cuda:7')
 
     def forward(self, rgb, thermal, rgb_pre=None, thermal_pre=None, hm_pre=None):
         # 预处理
         rgb_processed = self.cnn_rgb(rgb)
         thermal_processed = self.cnn_t(thermal)
-        rgb_processed = rgb_processed.to('cuda:1')
-        thermal_processed = thermal_processed.to('cuda:1')
 
         # 时序融合
         if rgb_pre is not None and thermal_pre is not None:
-            rgb_pre = self.cnn_rgb(rgb_pre).to('cuda:1')
-            thermal_pre = self.cnn_t(thermal_pre).to('cuda:1')
+            rgb_pre = self.cnn_rgb(rgb_pre)
+            thermal_pre = self.cnn_t(thermal_pre)
             temporal_fusion_rgb = self.temporal_fusion(rgb_processed, rgb_pre)
             temporal_fusion_thermal = self.temporal_fusion(thermal_processed, thermal_pre)
         else:
@@ -64,12 +62,12 @@ class Total_MDP(nn.Module):
 
         # 融合热力图
         if hm_pre is not None:
-            hm_pre = self.cnn_hm(hm_pre).to('cuda:1')
+            hm_pre = self.cnn_hm(hm_pre)
             temporal_fusion_rgb = temporal_fusion_rgb + hm_pre
             temporal_fusion_thermal = temporal_fusion_thermal + hm_pre
 
-        temporal_fusion_rgb = temporal_fusion_rgb.to('cuda:3')
-        temporal_fusion_thermal = temporal_fusion_thermal.to('cuda:3')
+        temporal_fusion_rgb = temporal_fusion_rgb.to('cuda:5')
+        temporal_fusion_thermal = temporal_fusion_thermal.to('cuda:5')
 
         # 过各自分支
         rgb_branch = self.rgb_branch(temporal_fusion_rgb)
@@ -80,14 +78,14 @@ class Total_MDP(nn.Module):
         rgb_branch_dla = self.dla(rgb_branch)[-1]
         thermal_branch_dla = self.dla(thermal_branch)[-1]
         modality_fusion_dla = self.dla(modality_fusion)[-1]
-        rgb_branch_dla = rgb_branch_dla.to('cuda:4')
-        thermal_branch_dla = thermal_branch_dla.to('cuda:4')
-        modality_fusion_dla = modality_fusion_dla.to('cuda:4')
+        rgb_branch_dla = rgb_branch_dla.to('cuda:6')
+        thermal_branch_dla = thermal_branch_dla.to('cuda:6')
+        modality_fusion_dla = modality_fusion_dla.to('cuda:6')
 
         # 决策融合
         decision_fuse = self.decision_fuse(rgb_branch_dla, thermal_branch_dla, modality_fusion_dla)
         # decision_fuse = checkpoint(self.decision_fuse, rgb_branch_dla, thermal_branch_dla, modality_fusion_dla)
-        decision_fuse = decision_fuse.to('cuda:5')
+        decision_fuse = decision_fuse.to('cuda:7')
 
         # 输出头
         output = self.output_heads(feats=[decision_fuse])
