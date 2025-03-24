@@ -32,11 +32,10 @@ class Total_MDP(nn.Module):
         # DLA34深度特征提取网络,2
         self.dla = DLASeg(num_layers=34, heads={'hm': 2, 'ltrb_amodal': 4, 'reg': 2, 'tracking': 2, 'wh': 2},
                           head_convs={'hm': [256], 'ltrb_amodal': [256], 'reg': [256], 'tracking': [256], 'wh': [256]},
-                          opt=opt)
+                          opt=opt).to('cuda:2')
         # 遍历所有参数，冻结dla网络
         for name, param in self.dla.named_parameters():
             param.requires_grad = False
-        self.dla = self.dla.to('cuda:2')
         # 决策融合模块，4号
         self.decision_fuse = DecisionFuse().to('cuda:4')
         # 输出头，5号
