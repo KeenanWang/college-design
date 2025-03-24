@@ -36,7 +36,7 @@ class Total_MDP(nn.Module):
         # 遍历所有参数，冻结dla网络
         for name, param in self.dla.named_parameters():
             param.requires_grad = False
-        self.dla = self.dla.to('cuda:6')
+        self.dla = self.dla.to('cuda:5')
         # 决策融合模块，5号
         self.decision_fuse = DecisionFuse().to('cuda:6')
         # 输出头，6号
