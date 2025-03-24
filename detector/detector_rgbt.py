@@ -30,7 +30,7 @@ class Detector_RGBT(object):
 
         print('Creating model...')
         self.model = create_model(opt=opt)
-        self.model = load_model(self.model, opt.load_model)
+        self.model = load_model(self.model, opt.load_model,opt)
         self.model = self.model.to(opt.device)
         self.model.eval()
 

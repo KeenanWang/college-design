@@ -42,8 +42,8 @@ class Total(nn.Module):
                           head_convs={'hm': [256], 'ltrb_amodal': [256], 'reg': [256], 'tracking': [256], 'wh': [256]},
                           opt=opt)
         # 遍历所有参数，冻结dla网络
-        for name, param in self.dla.named_parameters():
-            param.requires_grad = False
+        # for name, param in self.dla.named_parameters():
+        #     param.requires_grad = False
 
     def forward(self, rgb, thermal, rgb_pre=None, thermal_pre=None, hm_pre=None):
         # 预处理
