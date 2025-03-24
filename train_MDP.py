@@ -49,7 +49,7 @@ model = Total_MDP(opt=opt)
 optimizer = torch.optim.Adam(model.parameters(), opt.lr)
 
 # 损失函数
-Loss = GenericLoss(opt=opt).to("cuda:7")
+Loss = GenericLoss(opt=opt).to("cuda:6")
 
 # AMP
 scaler = GradScaler(enabled=opt.use_amp)
