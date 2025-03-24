@@ -1,6 +1,5 @@
 from torch import nn
 
-from models.networks.backbones.dla import DLASeg
 from models.networks.modality_mix import ModalityMix
 
 
@@ -15,13 +14,6 @@ class FusionBranch(nn.Module):
         self.cnn_down = nn.Conv2d(in_channels=16, out_channels=3, kernel_size=1)
         # 模态融合器
         self.modality_mix = ModalityMix()
-        # # DLA网络
-        # self.dla = DLASeg(num_layers=34, heads={'hm': 2, 'ltrb_amodal': 4, 'reg': 2, 'tracking': 2, 'wh': 2},
-        #                   head_convs={'hm': [256], 'ltrb_amodal': [256], 'reg': [256], 'tracking': [256], 'wh': [256]},
-        #                   opt=opt)
-        # # 遍历所有参数，冻结dla网络
-        # for name, param in self.dla.named_parameters():
-        #     param.requires_grad = False
 
     def forward(self, rgb, thermal):
         rgb_down = self.cnn_down(rgb)

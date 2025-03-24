@@ -295,6 +295,8 @@ class DLA(nn.Module):
         if pre_hm is not None:
             x = x + self.pre_hm_layer(pre_hm)
         for i in range(6):
+            if i ==5:
+                i = 5
             x = getattr(self, 'level{}'.format(i))(x)
             y.append(x)
 

@@ -1,16 +1,16 @@
 import torch
 import torch.nn.functional as F
 from torch import nn
-from torch.utils.checkpoint import checkpoint
 
 from models.networks.attention import MultiHeadAttention
 from models.networks.embedding_layer import EmbeddingLayer
 
 
 class TemporalFusionModule(nn.Module):
-    def __init__(self, embedding_dim=16):
+    def __init__(self, h, w, embedding_dim):
         super().__init__()
-        self.num_patches = 34 * 60
+        assert w % embedding_dim == 0, f'w{w} % embedding_dim{embedding_dim}结果不为0'
+        self.num_patches = w // embedding_dim * h // embedding_dim
         self.num_tokens = 0
         self.embedding_dim = embedding_dim
         # patch embedding

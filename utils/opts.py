@@ -147,6 +147,7 @@ class opts(object):
                                  help='enable distributed training')
         self.parser.add_argument('--use_amp', action='store_true',
                             help='enable automatic mixed precision')
+        self.parser.add_argument('--embedding_dim', type=int, default=16)
         # test
         self.parser.add_argument('--test_mot_rgbt', type=bool, default=False)
         self.parser.add_argument('--flip_test', action='store_true',

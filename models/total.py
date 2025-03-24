@@ -1,6 +1,4 @@
 from torch import nn
-import torch
-from torch.utils.checkpoint import checkpoint
 
 from models.fusionbranch import FusionBranch
 from models.networks.backbones.dla import DLASeg
@@ -18,13 +16,14 @@ class Total(nn.Module):
 
     def __init__(self, opt):
         super().__init__()
-        self.embedding_dim = 16
+        self.embedding_dim = opt.embedding_dim
+
         # 预处理部分
         self.cnn_rgb = nn.Conv2d(in_channels=3, out_channels=self.embedding_dim, kernel_size=1, stride=1)
         self.cnn_t = nn.Conv2d(in_channels=3, out_channels=self.embedding_dim, kernel_size=1, stride=1)
         self.cnn_hm = nn.Conv2d(in_channels=1, out_channels=self.embedding_dim, kernel_size=1, stride=1)
         # 时序融合模块
-        self.temporal_fusion = TemporalFusionModule()
+        self.temporal_fusion = TemporalFusionModule(h=opt.input_h, w=opt.input_w,embedding_dim=self.embedding_dim)
         # RGB分支
         self.rgb_branch = RgbBranch(opt=opt)
         # 热成像分支
@@ -81,8 +80,8 @@ class Total(nn.Module):
         del rgb_processed, thermal_processed, temporal_fusion_rgb, temporal_fusion_thermal
 
         # 决策融合
-        # decision_fuse = self.decision_fuse(rgb_branch, thermal_branch, modality_fusion)
-        decision_fuse = checkpoint(self.decision_fuse, rgb_branch, thermal_branch, modality_fusion)
+        decision_fuse = self.decision_fuse(rgb_branch, thermal_branch, modality_fusion)
+        # decision_fuse = checkpoint(self.decision_fuse, rgb_branch, thermal_branch, modality_fusion)
 
         # 输出头
         output = self.output_heads(feats=[decision_fuse])

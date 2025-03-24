@@ -1,8 +1,6 @@
 import torch
 from torch import nn
 
-from models.networks.backbones.dla import DLASeg
-
 
 class ThermalBranch(nn.Module):
     """

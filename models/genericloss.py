@@ -1,7 +1,7 @@
 import torch
 
+from models.Losses.losses import FastFocalLoss, RegWeightedL1Loss
 from models.Losses.utils import _sigmoid
-from models.Losses.losses import FastFocalLoss, RegWeightedL1Loss, BinRotLoss, WeightedBCELoss
 
 
 class GenericLoss(torch.nn.Module):
@@ -9,10 +9,6 @@ class GenericLoss(torch.nn.Module):
         super(GenericLoss, self).__init__()
         self.crit = FastFocalLoss(opt=opt)
         self.crit_reg = RegWeightedL1Loss()
-        if 'rot' in opt.heads:
-            self.crit_rot = BinRotLoss()
-        if 'nuscenes_att' in opt.heads:
-            self.crit_nuscenes_att = WeightedBCELoss()
         self.opt = opt
 
     def _sigmoid_output(self, output):

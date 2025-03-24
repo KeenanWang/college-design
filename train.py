@@ -1,11 +1,11 @@
 import os
 import sys
+
 from torch.cuda.amp import autocast, GradScaler
 
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"  # 内存碎片清理
 import torch
 from torch.utils.tensorboard import SummaryWriter  # 新增导入
-import torchvision.utils as vutils  # 新增导入
 
 from dataset.dataset_factory import get_dataset
 from models.genericloss import GenericLoss

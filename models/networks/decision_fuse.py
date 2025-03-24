@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 from torch import nn
 
 from models.networks.attention import NonLocalBlock
@@ -11,6 +12,8 @@ class DecisionFuse(nn.Module):
 
     def __init__(self):
         super().__init__()
+        # 降采样
+        self.conv = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=5, stride=5)
         # squeeze部分
         self.nl_v = NonLocalBlock(in_channels=64)
         self.nl_fused = NonLocalBlock(in_channels=64)
@@ -24,6 +27,13 @@ class DecisionFuse(nn.Module):
         )
 
     def forward(self, rgb, thermal, fusion):
+        assert rgb.size() == thermal.size() == fusion.size()
+        _, _, h, w = rgb.shape
+        # 降采样
+        rgb = self.conv(rgb)
+        thermal = self.conv(thermal)
+        fusion = self.conv(fusion)
+
         # squeeze
         _, v = self.nl_v(rgb, rgb, rgb)
         _, t = self.nl_fused(thermal, thermal, thermal)
@@ -53,6 +63,7 @@ class DecisionFuse(nn.Module):
 
         # 最后融合
         final = rgb_fuse + thermal_fuse + fusion_fuse
+        final = F.interpolate(final, size=(h, w), mode='bilinear', align_corners=True)
         return final
 
 
@@ -62,3 +73,4 @@ if __name__ == "__main__":
     fusion = torch.randn(1, 64, 135, 240).to(torch.device('cuda:0'))
     model = DecisionFuse().to(torch.device('cuda:0'))
     print(model(rgb, thermal, fusion).shape)
+    print(model(rgb, thermal, fusion).shape == fusion.shape)
