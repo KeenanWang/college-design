@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter  # 新增导入
 from dataset.dataset_factory import get_dataset
 from models.genericloss import GenericLoss
 from models.model_tools import save_model
-from models.total import Total
+from models.total_MDP import Total_MDP
 from utils.opts import opts
 
 opt = opts().parse()
@@ -41,7 +41,7 @@ data_loader = torch.utils.data.DataLoader(
 )
 
 # 模型
-model = Total(opt=opt)
+model = Total_MDP(opt=opt)
 
 # 优化器
 optimizer = torch.optim.Adam(model.parameters(), opt.lr)

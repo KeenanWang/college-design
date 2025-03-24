@@ -9,7 +9,7 @@ from models.rgbbranch import RgbBranch
 from models.thermalbranch import ThermalBranch
 
 
-class Total(nn.Module):
+class Total_MDP(nn.Module):
     """
     这是整体网络架构，模型并行版。
     """
