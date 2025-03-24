@@ -6,6 +6,7 @@ from torch.cuda.amp import autocast, GradScaler
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"  # 内存碎片清理
 import torch
 from torch.utils.tensorboard import SummaryWriter  # 新增导入
+torch.cuda.set_device(4)
 
 from dataset.dataset_factory import get_dataset
 from models.genericloss import GenericLoss
@@ -104,7 +105,8 @@ for epoch in range(opt.num_epochs):
         if global_step % 50 == 0:  # 每50步记录一次标量
             # 记录损失
             for name, value in loss_stats.items():
-                writer.add_scalar(f"Loss/{name}", value.mean(), global_step)
+                # 确保值为标量
+                writer.add_scalar(f"Loss/{name}", value.mean().item(), global_step)  # 添加.item()
 
             # 记录学习率
             writer.add_scalar("Params/lr", optimizer.param_groups[0]['lr'], global_step)
