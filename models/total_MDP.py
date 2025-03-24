@@ -49,7 +49,7 @@ class Total_MDP(nn.Module):
         # 预处理
         rgb_processed = self.cnn_rgb(rgb)
         thermal_processed = self.cnn_t(thermal)
-
+        print_gpu_memory()
         # 时序融合
         if rgb_pre is not None and thermal_pre is not None:
             rgb_pre = self.cnn_rgb(rgb_pre)
@@ -59,18 +59,18 @@ class Total_MDP(nn.Module):
         else:
             temporal_fusion_rgb = self.temporal_fusion(rgb_processed, rgb_processed)
             temporal_fusion_thermal = self.temporal_fusion(thermal_processed, thermal_processed)
-
+        print_gpu_memory()
         # 融合热力图
         if hm_pre is not None:
             hm_pre = self.cnn_hm(hm_pre)
             temporal_fusion_rgb = temporal_fusion_rgb + hm_pre
             temporal_fusion_thermal = temporal_fusion_thermal + hm_pre
-
+        print_gpu_memory()
         # 过各自分支
         rgb_branch = self.rgb_branch(temporal_fusion_rgb)
         thermal_branch = self.thermal_branch(temporal_fusion_thermal)
         modality_fusion = self.fusion_branch(temporal_fusion_rgb, temporal_fusion_thermal)
-
+        print_gpu_memory()
         # 过DLA网络
         rgb_branch_dla = self.dla(rgb_branch)[-1]
         thermal_branch_dla = self.dla(thermal_branch)[-1]
@@ -78,16 +78,45 @@ class Total_MDP(nn.Module):
         rgb_branch_dla = rgb_branch_dla.to('cuda:5')
         thermal_branch_dla = thermal_branch_dla.to('cuda:5')
         modality_fusion_dla = modality_fusion_dla.to('cuda:5')
-
+        print_gpu_memory()
         # 决策融合
         decision_fuse = self.decision_fuse(rgb_branch_dla, thermal_branch_dla, modality_fusion_dla)
         # decision_fuse = checkpoint(self.decision_fuse, rgb_branch_dla, thermal_branch_dla, modality_fusion_dla)
         decision_fuse = decision_fuse.to('cuda:6')
-
+        print_gpu_memory()
         # 输出头
         output = self.output_heads(feats=[decision_fuse])
 
         return output
+
+
+def print_gpu_memory():
+    if torch.cuda.is_available():
+        num_gpus = torch.cuda.device_count()
+        print(f"=== {num_gpus} GPU(s) Memory Usage ===")
+
+        for i in range(num_gpus):
+            # 获取设备属性
+            props = torch.cuda.get_device_properties(i)
+
+            # 获取内存统计数据（单位：字节）
+            allocated = torch.cuda.memory_allocated(i)  # 当前已分配内存
+            reserved = torch.cuda.memory_reserved(i)  # 当前保留内存（包含未分配部分）
+            max_allocated = torch.cuda.max_memory_allocated(i)  # 最大历史分配
+
+            # 转换为MB
+            total_mem = props.total_memory / 1024 ** 3
+            allocated_mem = allocated / 1024 ** 2
+            reserved_mem = reserved / 1024 ** 2
+            max_allocated_mem = max_allocated / 1024 ** 2
+
+            print(f"[GPU {i}] {props.name}")
+            print(f"  Total:     {total_mem:.2f} GB")
+            print(f"  Allocated: {allocated_mem:.2f} MB")
+            print(f"  Reserved:  {reserved_mem:.2f} MB")
+            print(f"  Peak Used: {max_allocated_mem:.2f} MB")
+    else:
+        print("CUDA not available")
 
 
 if __name__ == '__main__':

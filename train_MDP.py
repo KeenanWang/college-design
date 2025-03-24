@@ -11,7 +11,7 @@ torch.cuda.set_device(4)
 from dataset.dataset_factory import get_dataset
 from models.genericloss import GenericLoss
 from models.model_tools import save_model
-from models.total_MDP import Total_MDP
+from models.total_MDP import Total_MDP, print_gpu_memory
 from utils.opts import opts
 
 opt = opts().parse()
@@ -88,11 +88,11 @@ for epoch in range(opt.num_epochs):
             for k in batch:
                 if k != 'meta':
                     batch[k] = batch[k].to(device='cuda:6', non_blocking=True)
-
+            print_gpu_memory()
             # 计算损失
             loss, loss_stats = Loss(output, batch)
             loss = loss.mean()
-
+        print_gpu_memory()
         # 反向传播
         optimizer.zero_grad()
         scaler.scale(loss).backward()
