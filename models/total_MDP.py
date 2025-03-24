@@ -106,7 +106,7 @@ if __name__ == '__main__':
     rgb = torch.randn(1, 3, 544, 960).to('cuda:0')
     thermal = torch.randn(1, 3, 544, 960).to('cuda:0')
     hm = torch.randn(1, 1, 544, 960).to('cuda:0')
-    model = Total(opt)
+    model = Total_MDP(opt)
     output = model(rgb, thermal, rgb, thermal, hm)[-1]
     for each in output:
         print(each, output[each].shape)
