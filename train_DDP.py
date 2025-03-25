@@ -57,7 +57,8 @@ if __name__ == "__main__":
         sampler=train_sampler,
         num_workers=opt.num_workers,
         pin_memory=False,
-        drop_last=True
+        drop_last=True,
+        prefetch_factor=4,
     )
 
     # 模型

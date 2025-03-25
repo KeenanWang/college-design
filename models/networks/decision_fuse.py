@@ -13,7 +13,7 @@ class DecisionFuse(nn.Module):
     def __init__(self):
         super().__init__()
         # 降采样
-        self.conv = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=5, stride=5)
+        self.conv = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=7, stride=7)
         # squeeze部分
         self.nl_v = NonLocalBlock(in_channels=64)
         self.nl_fused = NonLocalBlock(in_channels=64)
