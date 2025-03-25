@@ -1,0 +1,21 @@
+torchrun \
+--nproc_per_node=8 \
+--nnodes=1 \
+--node_rank=0 \
+train_DDP.py tracking \
+--modal RGB-T \
+--save_all \
+--exp_id VTMOT_PFTrack \
+--dataset mot_rgbt \
+--dataset_version mot_rgbt \
+--batch_size 8 \          # 改为单卡batch_size
+--pre_hm \
+--ltrb_amodal \
+--same_aug \
+--hm_disturb 0.05 \
+--lost_disturb 0.4 \
+--fp_disturb 0.1 \
+--input_h 544 \
+--input_w 960 \
+--lr 2.5e-4 \             # 根据线性缩放规则调整后的学习率
+--gpu -1                  # 禁用原gpu参数，由DDP自动管理
