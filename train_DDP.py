@@ -1,12 +1,10 @@
 import os
 import sys
+
 import torch
 import torch.distributed as dist
-import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
-from torch.utils.data.distributed import DistributedSampler
-from torch.cuda.amp import autocast, GradScaler
-from tqdm import tqdm
+from torch.utils.data.distributed import DistributedSampler  # 新增导入
 
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 from torch.utils.tensorboard import SummaryWriter
@@ -18,163 +16,151 @@ from models.total import Total
 from utils.opts import opts
 
 
-def setup(rank, world_size):
-    # 初始化进程组
+# 📌 初始化分布式环境
+def init_distributed_mode(opt):
+    opt.rank = int(os.environ['RANK'])
+    opt.local_rank = int(os.environ['LOCAL_RANK'])
+    opt.world_size = int(os.environ['WORLD_SIZE'])
+
     dist.init_process_group(
         backend="nccl",
         init_method="env://",
-        rank=rank,
-        world_size=world_size
+        world_size=opt.world_size,
+        rank=opt.rank
     )
-    torch.cuda.set_device(rank)
+
+    # 确保每个进程使用不同的GPU
+    torch.cuda.set_device(opt.local_rank)
+    opt.device = torch.device("cuda", opt.local_rank)
+
+    # 同步所有进程
+    dist.barrier()
 
 
-def cleanup():
-    dist.destroy_process_group()
+def main():
+    opt = opts().parse()
 
-
-def main(rank, world_size, opt):
     # 初始化分布式训练
-    setup(rank, world_size)
+    if opt.distributed:  # 添加新的命令行参数 --distributed
+        init_distributed_mode(opt)
+        print(f"Initialized distributed training on rank {opt.rank}")
+    else:
+        opt.rank = 0  # 单卡模式默认rank为0
+        opt.device = torch.device('cuda' if opt.gpus[0] >= 0 else 'cpu')
 
-    # 初始化TensorBoard（仅主进程）
-    if rank == 0:
+    #  只在主进程初始化TensorBoard
+    if opt.rank == 0:
         writer = SummaryWriter(log_dir=f'logs/exp_{opt.exp_id}')
     else:
         writer = None
 
     # 数据集
-    torch.manual_seed(opt.seed + rank)  # 不同进程不同随机种子
+    torch.manual_seed(opt.seed + opt.rank)  # 不同rank设置不同随机种子
     Dataset = get_dataset(opt.dataset)
-
-    # 参数设置
     opt = opts().update_dataset_info_and_set_heads(opt, Dataset)
-    if rank == 0:
-        print(opt)
+
+    # 注释掉手动设置CUDA_VISIBLE_DEVICES（由启动脚本控制）
+    # if not opt.not_set_cuda_env:
+    #     os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpus_str
 
     # 分布式采样器
     train_dataset = Dataset(opt, 'train')
     sampler = DistributedSampler(
         train_dataset,
-        num_replicas=world_size,
-        rank=rank,
+        num_replicas=opt.world_size if opt.distributed else 1,
+        rank=opt.rank,
         shuffle=True
-    )
+    ) if opt.distributed else None
 
-    # 数据加载器
     data_loader = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=opt.batch_size,
-        sampler=sampler,
+        shuffle=(sampler is None),
         num_workers=opt.num_workers,
-        pin_memory=True,
+        pin_memory=True,  # 建议开启加速数据传输
+        sampler=sampler,
         drop_last=True
     )
 
     # 模型
-    model = Total(opt=opt).to(rank)
-    model = DDP(model, device_ids=[rank], find_unused_parameters=True)
+    model = Total(opt=opt)
+    model = model.to(opt.device)
 
-    # 优化器
+    # DDP包装模型
+    if opt.distributed:
+        model = DDP(model, device_ids=[opt.local_rank], output_device=opt.local_rank)
+
     optimizer = torch.optim.Adam(model.parameters(), opt.lr)
+    Loss = GenericLoss(opt=opt)
 
-    # 损失函数
-    loss_func = GenericLoss(opt=opt)
-
-    # AMP
-    scaler = GradScaler(enabled=opt.use_amp)
-
-    # 训练参数
+    # 训练
     global_step = 0
     num_iters = len(data_loader) if opt.num_iters < 0 else opt.num_iters
     loss_min = sys.maxsize
 
     for epoch in range(opt.num_epochs):
-        sampler.set_epoch(epoch)  # 重要：设置epoch保证shuffle正确
+        # 设置epoch为sampler的随机种子
+        if opt.distributed:
+            data_loader.sampler.set_epoch(epoch)
 
-        if rank == 0:
-            pbar = tqdm(total=num_iters, desc=f"Epoch {epoch + 1}",
-                        bar_format='{l_bar}{bar:20}{r_bar}{bar:-20b}')
-
-        model.train()
         for iter_id, batch in enumerate(data_loader):
             if iter_id >= num_iters:
                 break
 
-            # 数据迁移
+            # 清除显存改为按需执行
+            if iter_id % 10 == 0:
+                torch.cuda.empty_cache()
+
+            # 数据迁移到设备
             for k in batch:
                 if k != 'meta':
-                    batch[k] = batch[k].to(rank, non_blocking=True)
+                    batch[k] = batch[k].to(device=opt.device, non_blocking=True)
 
             # 前向传播
-            with autocast(opt.use_amp):
-                output = model(
-                    batch['vi_image'],
-                    batch['ir_image'],
-                    batch.get('pre_vi_img', None),
-                    batch.get('pre_ir_img', None),
-                    batch.get('pre_hm', None)
-                )
+            pre_vi_img = batch.get('pre_vi_img', None)
+            pre_ir_img = batch.get('pre_ir_img', None)
+            pre_hm = batch.get('pre_hm', None)
 
-                # 计算损失
-                loss, loss_stats = loss_func(output, batch)
-                loss = loss.mean()
+            output = model(
+                batch['vi_image'],
+                batch['ir_image'],
+                pre_vi_img,
+                pre_ir_img,
+                pre_hm
+            )
+
+            # 计算损失
+            loss, loss_stats = Loss(output, batch)
+            loss = loss.mean()
 
             # 反向传播
             optimizer.zero_grad()
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
+            loss.backward()
+            optimizer.step()
 
-            # 同步所有进程的损失值
-            reduced_loss = loss.detach().clone()
-            dist.all_reduce(reduced_loss, op=dist.ReduceOp.SUM)
-            reduced_loss = reduced_loss / world_size
+            # 只在主进程保存模型和记录日志
+            if opt.rank == 0:
+                if loss.item() < loss_min:
+                    loss_min = loss.item()
+                    save_model(
+                        model=model.module if opt.distributed else model,  # 📌 注意获取原始模型
+                        save_path='runs/best_model.pth',
+                        epoch=epoch,
+                        optimizer=optimizer
+                    )
 
-            # 主进程保存模型和日志
-            if rank == 0:
-                # 更新最小损失
-                if reduced_loss < loss_min:
-                    loss_min = reduced_loss.item()
-                    save_model(model, 'runs/best_model.pth', epoch, optimizer)
-
-                # 记录日志
-                if global_step % 50 == 0:
-                    writer.add_scalar("Loss/total", reduced_loss, global_step)
+                # TensorBoard日志记录
+                if global_step % 100 == 0:
                     for name, value in loss_stats.items():
                         writer.add_scalar(f"Loss/{name}", value.mean(), global_step)
                     writer.add_scalar("Params/lr", optimizer.param_groups[0]['lr'], global_step)
 
-                # 更新进度条
-                pbar.update(1)
-                pbar.set_postfix({
-                    'loss': f"{reduced_loss.item():.4f}",
-                    'lr': f"{optimizer.param_groups[0]['lr']:.2e}",
-                    'step': global_step
-                })
-
             global_step += 1
-            torch.cuda.empty_cache()
+            del output, loss, loss_stats
 
-        if rank == 0:
-            pbar.close()
-
-    if rank == 0:
+    if opt.rank == 0 and writer is not None:
         writer.close()
-    cleanup()
 
 
 if __name__ == "__main__":
-    opt = opts().parse()
-
-    # 设置可见GPU数量
-    os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpus_str
-    world_size = len(opt.gpus)
-
-    # 启动多进程训练
-    mp.spawn(
-        main,
-        args=(world_size, opt),
-        nprocs=world_size,
-        join=True
-    )
+    main()
