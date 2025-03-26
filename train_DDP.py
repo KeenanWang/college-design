@@ -131,7 +131,7 @@ if __name__ == "__main__":
             # TensorBoard日志记录
             if global_step % 50 == 0:
                 for name, value in loss_stats.items():
-                    writer.add_scalar(f"Loss/{name}", global_loss, global_step)
+                    writer.add_scalar(f"Loss/{name}", value.mean(), global_step)
                 writer.add_scalar("Params/lr", optimizer.param_groups[0]['lr'], global_step)
 
                 # 更新进度条信息
