@@ -121,25 +121,27 @@ if __name__ == "__main__":
             scaler.update()
 
             # 只在主进程保存模型和记录日志
-            if local_rank == 0 and global_loss < loss_min:
-                loss_min = global_loss
-                save_model(model=model.module,  # 注意获取原始模型
-                           save_path='runs/best_model.pth',
-                           epoch=epoch,
-                           optimizer=optimizer)
+            if local_rank == 0:
+                if global_loss < loss_min:
+                    loss_min = global_loss
+                    save_model(model=model.module,  # 注意获取原始模型
+                               save_path='runs/best_model.pth',
+                               epoch=epoch,
+                               optimizer=optimizer)
 
-            # TensorBoard日志记录
-            if global_step % 50 == 0:
-                for name, value in loss_stats.items():
-                    writer.add_scalar(f"Loss/{name}", value.mean(), global_step)
-                writer.add_scalar("Params/lr", optimizer.param_groups[0]['lr'], global_step)
+                # TensorBoard日志记录
+                if global_step % 10 == 0:
+                    for name, value in loss_stats.items():
+                        writer.add_scalar(f"Loss/{name}", value.mean(), global_step)
+                    writer.add_scalar("Global_Loss", global_loss, global_step)
+                    writer.add_scalar("Params/lr", optimizer.param_groups[0]['lr'], global_step)
 
                 # 更新进度条信息
-            pbar.set_postfix({
-                'loss': f"{global_loss:.4f}",
-                'lr': f"{optimizer.param_groups[0]['lr']:.2e}",
-                'step': global_step
-            })
+                pbar.set_postfix({
+                    'loss': f"{global_loss:.4f}",
+                    'lr': f"{optimizer.param_groups[0]['lr']:.2e}",
+                    'step': global_step
+                })
 
             global_step += 1
 
