@@ -146,7 +146,7 @@ class opts(object):
         self.parser.add_argument('--distributed', action='store_true',
                                  help='enable distributed training')
         self.parser.add_argument('--use_amp', action='store_true',
-                            help='enable automatic mixed precision')
+                                 help='enable automatic mixed precision')
         self.parser.add_argument('--embedding_dim', type=int, default=16)
         # test
         self.parser.add_argument('--test_mot_rgbt', type=bool, default=False)
@@ -282,7 +282,6 @@ class opts(object):
             [int(i) for i in opt.ignore_loaded_cats.split(',')] \
                 if opt.ignore_loaded_cats != '' else []
 
-        opt.num_workers = max(opt.num_workers, 4 * len(opt.gpus))
         opt.pre_img = False
         if 'tracking' in opt.task:
             print('Running tracking')
