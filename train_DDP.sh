@@ -8,9 +8,10 @@ train_DDP.py tracking \
 --exp_id VTMOT_PFTrack \
 --dataset mot_rgbt \
 --dataset_version mot_rgbt \
---batch_size 8 --pre_hm \
+--batch_size 32 --pre_hm \
 --ltrb_amodal \
 --same_aug \
+--use_amp \
 --num_workers 8 \
 --hm_disturb 0.05 \
 --lost_disturb 0.4 \
@@ -18,4 +19,4 @@ train_DDP.py tracking \
 --input_h 544 \
 --input_w 960 \
 --lr 2.5e-4 \
---gpu -1
+--gpu 0,1,2,3,4,5,6,7
