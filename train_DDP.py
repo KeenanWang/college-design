@@ -40,7 +40,6 @@ if __name__ == "__main__":
     # 参数设置
     opt = opts().update_dataset_info_and_set_heads(opt, Dataset)
     opt.device = torch.device(f'cuda:{local_rank}')
-    opt.batch_size = opt.batch_size // world_size  # 调整每个进程的batch size
 
     # 加载器
     train_dataset = Dataset(opt, 'train')
@@ -56,7 +55,7 @@ if __name__ == "__main__":
         batch_size=opt.batch_size,
         sampler=train_sampler,
         num_workers=opt.num_workers,
-        pin_memory=False,
+        pin_memory=True,
         drop_last=True,
     )
 
@@ -114,6 +113,8 @@ if __name__ == "__main__":
                 # 计算损失
                 loss, loss_stats = Loss(output, batch)
                 loss = loss.mean()
+                dist.all_reduce(loss, op=dist.ReduceOp.SUM)
+                global_loss = loss.item() / dist.get_world_size()
 
             # 反向传播
             optimizer.zero_grad()
@@ -122,27 +123,25 @@ if __name__ == "__main__":
             scaler.update()
 
             # 只在主进程保存模型和记录日志
-            if local_rank == 0:
-                # 更新最小损失并保存模型
-                if loss.item() < loss_min:
-                    loss_min = loss.item()
-                    save_model(model=model.module,  # 注意获取原始模型
-                               save_path='runs/best_model.pth',
-                               epoch=epoch,
-                               optimizer=optimizer)
+            if local_rank == 0 and global_loss < loss_min:
+                loss_min = global_loss
+                save_model(model=model.module,  # 注意获取原始模型
+                           save_path='runs/best_model.pth',
+                           epoch=epoch,
+                           optimizer=optimizer)
 
                 # TensorBoard日志记录
-                if global_step % 50 == 0:
-                    for name, value in loss_stats.items():
-                        writer.add_scalar(f"Loss/{name}", value.mean(), global_step)
-                    writer.add_scalar("Params/lr", optimizer.param_groups[0]['lr'], global_step)
+            if global_step % 50 == 0:
+                for name, value in loss_stats.items():
+                    writer.add_scalar(f"Loss/{name}", value.mean(), global_step)
+                writer.add_scalar("Params/lr", optimizer.param_groups[0]['lr'], global_step)
 
                 # 更新进度条信息
-                pbar.set_postfix({
-                    'loss': f"{loss.item():.4f}",
-                    'lr': f"{optimizer.param_groups[0]['lr']:.2e}",
-                    'step': global_step
-                })
+            pbar.set_postfix({
+                'loss': f"{loss.item():.4f}",
+                'lr': f"{optimizer.param_groups[0]['lr']:.2e}",
+                'step': global_step
+            })
 
             global_step += 1
             del output, loss, loss_stats

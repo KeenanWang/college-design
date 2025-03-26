@@ -283,7 +283,6 @@ class opts(object):
                 if opt.ignore_loaded_cats != '' else []
 
         opt.num_workers = max(opt.num_workers, 4 * len(opt.gpus))
-        opt.num_workers = 0
         opt.pre_img = False
         if 'tracking' in opt.task:
             print('Running tracking')
