@@ -11,6 +11,7 @@ train_DDP.py tracking \
 --batch_size 8 --pre_hm \
 --ltrb_amodal \
 --same_aug \
+--num_workers 8 \
 --hm_disturb 0.05 \
 --lost_disturb 0.4 \
 --fp_disturb 0.1 \
