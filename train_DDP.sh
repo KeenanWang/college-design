@@ -12,7 +12,7 @@ train_DDP.py tracking \
 --ltrb_amodal \
 --same_aug \
 --use_amp \
---num_workers 8 \
+--num_workers 32 \
 --hm_disturb 0.05 \
 --lost_disturb 0.4 \
 --fp_disturb 0.1 \
