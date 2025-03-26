@@ -89,8 +89,6 @@ if __name__ == "__main__":
             if iter_id >= num_iters:
                 break
 
-            torch.cuda.empty_cache()
-
             # 数据迁移到设备
             for k in batch:
                 if k != 'meta':
@@ -130,23 +128,26 @@ if __name__ == "__main__":
                            epoch=epoch,
                            optimizer=optimizer)
 
-                # TensorBoard日志记录
+            # TensorBoard日志记录
             if global_step % 50 == 0:
                 for name, value in loss_stats.items():
-                    writer.add_scalar(f"Loss/{name}", value.mean(), global_step)
+                    writer.add_scalar(f"Loss/{name}", global_loss, global_step)
                 writer.add_scalar("Params/lr", optimizer.param_groups[0]['lr'], global_step)
 
                 # 更新进度条信息
             pbar.set_postfix({
-                'loss': f"{loss.item():.4f}",
+                'loss': f"{global_loss:.4f}",
                 'lr': f"{optimizer.param_groups[0]['lr']:.2e}",
                 'step': global_step
             })
 
             global_step += 1
-            del output, loss, loss_stats
 
         if local_rank == 0:
+            save_model(model=model.module,  # 注意获取原始模型
+                       save_path=f'runs/epoch_{epoch}.pth',
+                       epoch=epoch,
+                       optimizer=optimizer)
             pbar.close()  # 关闭当前epoch的进度条
 
     if local_rank == 0:
