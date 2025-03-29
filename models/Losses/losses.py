@@ -88,7 +88,7 @@ class FastFocalLoss(nn.Module):
     Faster and costs much less memory.
     '''
 
-    def __init__(self, opt=None):
+    def __init__(self):
         super(FastFocalLoss, self).__init__()
         self.only_neg_loss = _only_neg_loss
 

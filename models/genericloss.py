@@ -7,7 +7,7 @@ from models.Losses.utils import _sigmoid
 class GenericLoss(torch.nn.Module):
     def __init__(self, opt):
         super(GenericLoss, self).__init__()
-        self.crit = FastFocalLoss(opt=opt)
+        self.crit = FastFocalLoss()
         self.crit_reg = RegWeightedL1Loss()
         self.opt = opt
 
@@ -42,25 +42,6 @@ class GenericLoss(torch.nn.Module):
                     losses[head] += self.crit_reg(
                         output[head], batch[head + '_mask'],
                         batch['ind'], batch[head]) / opt.num_stacks
-
-            if 'hm_hp' in output:
-                losses['hm_hp'] += self.crit(
-                    output['hm_hp'], batch['hm_hp'], batch['hp_ind'],
-                    batch['hm_hp_mask'], batch['joint']) / opt.num_stacks
-                if 'hp_offset' in output:
-                    losses['hp_offset'] += self.crit_reg(
-                        output['hp_offset'], batch['hp_offset_mask'],
-                        batch['hp_ind'], batch['hp_offset']) / opt.num_stacks
-
-            if 'rot' in output:
-                losses['rot'] += self.crit_rot(
-                    output['rot'], batch['rot_mask'], batch['ind'], batch['rotbin'],
-                    batch['rotres']) / opt.num_stacks
-
-            if 'nuscenes_att' in output:
-                losses['nuscenes_att'] += self.crit_nuscenes_att(
-                    output['nuscenes_att'], batch['nuscenes_att_mask'],
-                    batch['ind'], batch['nuscenes_att']) / opt.num_stacks
 
         losses['tot'] = 0
         for head in opt.heads:

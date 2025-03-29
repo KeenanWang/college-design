@@ -122,12 +122,6 @@ if __name__ == "__main__":
 
             # 只在主进程保存模型和记录日志
             if local_rank == 0:
-                if global_loss < loss_min:
-                    loss_min = global_loss
-                    save_model(model=model.module,  # 注意获取原始模型
-                               save_path='runs/best_model.pth',
-                               epoch=epoch,
-                               optimizer=optimizer)
 
                 # TensorBoard日志记录
                 if global_step % 10 == 0:
@@ -146,6 +140,12 @@ if __name__ == "__main__":
             global_step += 1
 
         if local_rank == 0:
+            if global_loss < loss_min:
+                loss_min = global_loss
+                save_model(model=model.module,  # 注意获取原始模型
+                           save_path='runs/best_model.pth',
+                           epoch=epoch,
+                           optimizer=optimizer)
             save_model(model=model.module,  # 注意获取原始模型
                        save_path=f'runs/epoch_{epoch}.pth',
                        epoch=epoch,
