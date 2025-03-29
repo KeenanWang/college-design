@@ -93,7 +93,7 @@ for epoch in range(opt.num_epochs):
 
             # 计算损失
             loss, loss_stats = Loss(output, batch)
-            loss = loss.mean()
+            loss = loss.mean() / opt.batch_size
 
         # 反向传播
         optimizer.zero_grad()

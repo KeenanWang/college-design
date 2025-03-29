@@ -110,9 +110,12 @@ if __name__ == "__main__":
 
                 # 计算损失
                 loss, loss_stats = Loss(output, batch)
-                loss = loss.mean()
+                loss = loss.mean() / opt.batch_size  # 排除样本带来的影响
                 dist.all_reduce(loss, op=dist.ReduceOp.SUM)
                 global_loss = loss.item() / dist.get_world_size()
+                for name, value in loss_stats.items():
+                    dist.all_reduce(value, op=dist.ReduceOp.SUM)
+                    loss_stats[name] = value / dist.get_world_size()
 
             # 反向传播
             optimizer.zero_grad()
