@@ -152,6 +152,11 @@ if __name__ == "__main__":
                        optimizer=optimizer)
             pbar.close()  # 关闭当前epoch的进度条
 
+        if epoch in opt.lr_step:
+            lr = opt.lr * (0.1 ** (opt.lr_step.index(epoch) + 1))
+            print('Drop LR to', lr)
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = lr
     if local_rank == 0:
         writer.close()
     dist.destroy_process_group()
