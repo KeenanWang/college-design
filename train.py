@@ -93,7 +93,7 @@ for epoch in range(opt.num_epochs):
 
             # 计算损失
             loss, loss_stats = Loss(output, batch)
-            loss = loss.mean() / opt.batch_size
+            loss = loss.mean()
 
         # 反向传播
         optimizer.zero_grad()
@@ -109,7 +109,7 @@ for epoch in range(opt.num_epochs):
         # TensorBoard日志记录
         if global_step % 50 == 0:
             for name, value in loss_stats.items():
-                writer.add_scalar(f"Loss/{name}", value.mean(), global_step)
+                writer.add_scalar(f"Loss/{name}", value.mean() / opt.batch_size, global_step)
             writer.add_scalar("Params/lr", optimizer.param_groups[0]['lr'], global_step)
 
         # 更新进度条信息

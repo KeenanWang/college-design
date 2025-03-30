@@ -64,7 +64,7 @@ if __name__ == "__main__":
     model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
 
     # 优化器
-    optimizer = torch.optim.Adam(model.parameters(), opt.lr)
+    optimizer = torch.optim.Adam(model.parameters(), opt.lr, amsgrad=True)
 
     # 损失函数
     Loss = GenericLoss(opt=opt)
@@ -110,12 +110,9 @@ if __name__ == "__main__":
 
                 # 计算损失
                 loss, loss_stats = Loss(output, batch)
-                loss = loss.mean() / opt.batch_size  # 排除样本带来的影响
+                loss = loss.mean()
                 dist.all_reduce(loss, op=dist.ReduceOp.SUM)
                 global_loss = loss.item() / dist.get_world_size()
-                for name, value in loss_stats.items():
-                    dist.all_reduce(value, op=dist.ReduceOp.SUM)
-                    loss_stats[name] = value / dist.get_world_size()
 
             # 反向传播
             optimizer.zero_grad()
@@ -129,7 +126,7 @@ if __name__ == "__main__":
                 # TensorBoard日志记录
                 if global_step % 10 == 0:
                     for name, value in loss_stats.items():
-                        writer.add_scalar(f"Loss/{name}", value.mean(), global_step)
+                        writer.add_scalar(f"Loss/{name}", value.mean() / dist.get_world_size(), global_step)
                     writer.add_scalar("Global_Loss", global_loss, global_step)
                     writer.add_scalar("Params/lr", optimizer.param_groups[0]['lr'], global_step)
 
