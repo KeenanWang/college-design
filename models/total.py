@@ -23,7 +23,7 @@ class Total(nn.Module):
         self.cnn_t = nn.Conv2d(in_channels=3, out_channels=self.embedding_dim, kernel_size=1, stride=1)
         self.cnn_hm = nn.Conv2d(in_channels=1, out_channels=self.embedding_dim, kernel_size=1, stride=1)
         # 时序融合模块
-        self.temporal_fusion = TemporalFusionModule(h=opt.input_h, w=opt.input_w,embedding_dim=self.embedding_dim)
+        self.temporal_fusion = TemporalFusionModule(h=opt.input_h, w=opt.input_w, embedding_dim=self.embedding_dim)
         # RGB分支
         self.rgb_branch = RgbBranch(opt=opt)
         # 热成像分支
@@ -50,21 +50,19 @@ class Total(nn.Module):
         rgb_processed = self.cnn_rgb(rgb)
         thermal_processed = self.cnn_t(thermal)
 
+        # 融合热力图
+        if hm_pre is not None:
+            hm_pre = self.cnn_hm(hm_pre)
+
         # 时序融合
         if rgb_pre is not None and thermal_pre is not None:
             rgb_pre = self.cnn_rgb(rgb_pre)
             thermal_pre = self.cnn_t(thermal_pre)
-            temporal_fusion_rgb = self.temporal_fusion(rgb_processed, rgb_pre)
-            temporal_fusion_thermal = self.temporal_fusion(thermal_processed, thermal_pre)
+            temporal_fusion_rgb = self.temporal_fusion(rgb_processed, rgb_pre, hm_pre)
+            temporal_fusion_thermal = self.temporal_fusion(thermal_processed, thermal_pre, hm_pre)
         else:
-            temporal_fusion_rgb = self.temporal_fusion(rgb_processed, rgb_processed)
-            temporal_fusion_thermal = self.temporal_fusion(thermal_processed, thermal_processed)
-
-        # 融合热力图
-        if hm_pre is not None:
-            hm_pre = self.cnn_hm(hm_pre)
-            temporal_fusion_rgb += hm_pre
-            temporal_fusion_thermal += hm_pre
+            temporal_fusion_rgb = self.temporal_fusion(rgb_processed, rgb_processed, hm_pre)
+            temporal_fusion_thermal = self.temporal_fusion(thermal_processed, thermal_processed, hm_pre)
 
         # 过各自分支
         rgb_branch = self.rgb_branch(temporal_fusion_rgb)
@@ -93,10 +91,12 @@ if __name__ == '__main__':
     from utils.opts import opts
     import torch
 
-    opt = opts().init()
+    opt = opts().parse()
     rgb = torch.randn(1, 3, 544, 960)
     thermal = torch.randn(1, 3, 544, 960)
     hm = torch.randn(1, 1, 544, 960)
+    opt.input_h = 544
+    opt.input_w = 960
     model = Total(opt)
     output = model(rgb, thermal, rgb, thermal, hm)[-1]
     for each in output:

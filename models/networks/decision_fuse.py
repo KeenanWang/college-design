@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from models.networks.attention import NonLocalBlock
+from models.networks.transformer import NonLocalBlock
 
 
 class DecisionFuse(nn.Module):
