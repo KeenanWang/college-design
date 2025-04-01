@@ -83,7 +83,7 @@ for epoch in range(opt.num_epochs):
         pre_hm = batch.get('pre_hm', None)
 
         with autocast(opt.use_amp):
-            output = model(
+            rgb_output, thermal_output, output = model(
                 batch['vi_image'],
                 batch['ir_image'],
                 pre_vi_img,
@@ -92,36 +92,40 @@ for epoch in range(opt.num_epochs):
             )
 
             # 计算损失
-            loss, loss_stats = Loss(output, batch)
-            loss = loss.mean()
+            loss_rgb, loss_stats_rgb = Loss(rgb_output, batch)
+            loss_thermal, loss_stats_thermal = Loss(thermal_output, batch)
+            loss_output, loss_stats_output = Loss(output, batch)
+            total_loss = loss_rgb + loss_thermal + loss_output
 
         # 反向传播
         optimizer.zero_grad()
-        scaler.scale(loss).backward()
+        scaler.scale(total_loss).backward()
         scaler.step(optimizer)
         scaler.update()
 
-        # 更新最小损失并保存模型
-        if loss.item() < loss_min:
-            loss_min = loss.item()
-            save_model(model=model, save_path='runs/best_model.pth', epoch=epoch, optimizer=optimizer)
-
-        # TensorBoard日志记录
-        if global_step % 50 == 0:
-            for name, value in loss_stats.items():
-                writer.add_scalar(f"Loss/{name}", value.mean() / opt.batch_size, global_step)
-            writer.add_scalar("Params/lr", optimizer.param_groups[0]['lr'], global_step)
+        # # TensorBoard日志记录
+        # if global_step % 10 == 0:
+        #     for name, value in loss_stats_rgb.items():
+        #         writer.add_scalar(f"RGBLoss/{name}", value.mean(), global_step)
+        #     for name, value in loss_stats_thermal.items():
+        #         writer.add_scalar(f"ThermalLoss/{name}", value.mean(), global_step)
+        #     for name, value in loss_stats_output.items():
+        #         writer.add_scalar(f"OutputLoss/{name}", value.mean(), global_step)
+        #     writer.add_scalar("Global_Loss", total_loss, global_step)
+        #     writer.add_scalar("Params/lr", optimizer.param_groups[0]['lr'], global_step)
 
         # 更新进度条信息
         pbar.set_postfix({
-            'loss': f"{loss.item():.4f}",
+            'loss': f"{total_loss.item():.4f}",
             'lr': f"{optimizer.param_groups[0]['lr']:.2e}",
             'step': global_step
         })
 
         global_step += 1
-        del output, loss, loss_stats
-
+    # 更新最小损失并保存模型
+    if total_loss.item() < loss_min:
+        loss_min = total_loss.item()
+        save_model(model=model, save_path='runs/best_model.pth', epoch=epoch, optimizer=optimizer)
     pbar.close()  # 关闭当前epoch的进度条
 
 writer.close()
