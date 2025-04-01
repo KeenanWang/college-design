@@ -20,6 +20,6 @@ class SingleUnitFusion(nn.Module):
         x_flattened = torch.flatten(x, 1)
 
         x_rgb_weight, x_thermal_weight, x_fusion_weight = torch.split(
-            torch.softmax(self.fc(x_flattened).view(b_x, self.num_branch * c_x, h_x, w_x), 1), c_x, 1)
+            torch.softmax(self.fc(x_flattened).view(b_x, self.num_branch * c_x, h_x, w_x).contiguous(), 1), c_x, 1)
         x_output = x_rgb_weight * x_rgb + x_thermal_weight * x_thermal + x_fusion_weight * x_fusion
         return x_output

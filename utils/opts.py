@@ -148,6 +148,7 @@ class opts(object):
         self.parser.add_argument('--use_amp', action='store_true',
                                  help='enable automatic mixed precision')
         self.parser.add_argument('--embedding_dim', type=int, default=16)
+        self.parser.add_argument('--kernel_stride', type=int, default=32)
         # test
         self.parser.add_argument('--test_mot_rgbt', type=bool, default=False)
         self.parser.add_argument('--flip_test', action='store_true',

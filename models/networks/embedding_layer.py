@@ -2,9 +2,10 @@ from torch import nn
 
 
 class EmbeddingLayer(nn.Module):
-    def __init__(self, embed_dim=16, norm_layer=None):
+    def __init__(self, embed_dim=16, kernel_stride=32, norm_layer=None):
         super().__init__()
-        self.proj = nn.Conv2d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=16, stride=16, padding=1)
+        self.proj = nn.Conv2d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=kernel_stride,
+                              stride=kernel_stride)
         self.norm = norm_layer(embed_dim) if norm_layer else nn.Identity()
 
     def forward(self, x):

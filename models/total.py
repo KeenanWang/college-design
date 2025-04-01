@@ -15,15 +15,17 @@ class Total(nn.Module):
     def __init__(self, opt):
         super().__init__()
         self.embedding_dim = opt.embedding_dim
-
+        self.kernel_stride = opt.kernel_stride
         # 预处理部分
         self.cnn_rgb = nn.Conv2d(in_channels=3, out_channels=self.embedding_dim, kernel_size=1, stride=1)
         self.cnn_t = nn.Conv2d(in_channels=3, out_channels=self.embedding_dim, kernel_size=1, stride=1)
         self.cnn_hm = nn.Conv2d(in_channels=1, out_channels=self.embedding_dim, kernel_size=1, stride=1)
         # 时序融合模块
-        self.temporal_fusion_rgb = TemporalFusionModule(h=opt.input_h, w=opt.input_w, embedding_dim=self.embedding_dim)
+        self.temporal_fusion_rgb = TemporalFusionModule(h=opt.input_h, w=opt.input_w, embedding_dim=self.embedding_dim,
+                                                        kernel_stride=self.kernel_stride)
         self.temporal_fusion_thermal = TemporalFusionModule(h=opt.input_h, w=opt.input_w,
-                                                            embedding_dim=self.embedding_dim)
+                                                            embedding_dim=self.embedding_dim,
+                                                            kernel_stride=self.kernel_stride)
         # RGB分支
         self.rgb_branch = RgbBranch(opt=opt)
         # 热成像分支
