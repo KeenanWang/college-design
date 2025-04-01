@@ -22,7 +22,7 @@ if __name__ == "__main__":
     opt = opts().parse()
 
     if opt.gpus is not None:
-        os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpus
+        os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpus_str
 
     # 初始化分布式训练
     dist.init_process_group(backend='nccl')
