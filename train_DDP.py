@@ -19,13 +19,16 @@ if __name__ == "__main__":
     from models.total import Total
     from utils.opts import opts
 
+    opt = opts().parse()
+
+    if opt.gpus is not None:
+        os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpus
+
     # 初始化分布式训练
     dist.init_process_group(backend='nccl')
     local_rank = int(os.environ['LOCAL_RANK'])
     world_size = int(os.environ['WORLD_SIZE'])
     torch.cuda.set_device(local_rank)
-
-    opt = opts().parse()
 
     # 只在主进程初始化TensorBoard
     if local_rank == 0:
