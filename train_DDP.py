@@ -112,8 +112,8 @@ if __name__ == "__main__":
                 loss_rgb, loss_stats_rgb = Loss(rgb_branch, batch)
                 loss_thermal, loss_stats_thermal = Loss(thermal_branch, batch)
                 loss_output, loss_stats_output = Loss(output, batch)
-
                 total_loss = loss_rgb + loss_thermal + loss_output
+
                 dist.all_reduce(total_loss, op=dist.ReduceOp.SUM)
                 global_loss = total_loss.item() / dist.get_world_size()
 
