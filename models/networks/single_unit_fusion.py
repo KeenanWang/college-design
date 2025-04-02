@@ -10,6 +10,7 @@ class SingleUnitFusion(nn.Module):
             nn.Linear(num_branch * c * h * w, 16),
             nn.ReLU(),
             nn.Linear(16, num_branch * c * h * w),
+            nn.LayerNorm(num_branch * c * h * w),
         )
 
     def forward(self, rgb, thermal, fusion, type_choose):
