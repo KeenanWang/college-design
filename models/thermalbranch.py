@@ -12,8 +12,6 @@ class ThermalBranch(nn.Module):
 
     def __init__(self, opt, embedding_dim=16):
         super().__init__()
-        self.num_patches = 34 * 60
-        self.num_tokens = 0
         self.embedding_dim = embedding_dim
 
         # 降维

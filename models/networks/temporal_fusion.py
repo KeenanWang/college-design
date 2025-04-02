@@ -52,10 +52,10 @@ class TemporalFusionModule(nn.Module):
 if __name__ == '__main__':
     from utils.opts import opts
 
-    opt = opts().init()
+    opt = opts().parse()
     images = torch.randn(4, 16, 544, 960)
     hm = torch.randn(4, 16, 544, 960)
     b, c, h, w = images.shape
-    net = TemporalFusionModule(h, w, opt.embedding_dim)
+    net = TemporalFusionModule(h, w, opt.embedding_dim,opt.kernel_stride)
     output = net(images, images, hm)
     print(output.shape)
