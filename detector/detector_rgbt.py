@@ -341,7 +341,7 @@ class Detector_RGBT(object):
                 pre_inds=None, return_time=False):
         with torch.no_grad():
             torch.cuda.synchronize()
-            output = self.model(vi_images, ir_images, pre_vi_images, pre_ir_images, pre_hms)[-1]
+            output = self.model(vi_images, ir_images, pre_vi_images, pre_ir_images, pre_hms)[-1][-1]
             output = self._sigmoid_output(output)
             output.update({'pre_inds': pre_inds})
             if self.opt.flip_test:
