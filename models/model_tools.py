@@ -8,10 +8,7 @@ def create_model(opt):
 
 def load_model(model, model_path):
     checkpoint = torch.load(model_path, map_location=lambda storage, loc: storage)
-    if checkpoint['state_dict'].get('dla.base.fc.weight', None) is not None and checkpoint['state_dict'].get('dla.base.fc.bias',
-                                                                                                 None) is not None:
-        del checkpoint['state_dict']['dla.base.fc.weight'], checkpoint['state_dict']['dla.base.fc.bias']
-    model.load_state_dict(checkpoint['state_dict'], strict=True)
+    model.load_state_dict(checkpoint['state_dict'], strict=False)
     print('loaded {}, epoch {}'.format(model_path, checkpoint['epoch']))
     return model
 
