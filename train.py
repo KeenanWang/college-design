@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from dataset.dataset_factory import get_dataset
 from models.genericloss import GenericLoss
-from models.model_tools import save_model
+from models.model_tools import save_model, load_model
 from models.total import Total
 from utils.opts import opts
 
@@ -57,12 +57,18 @@ scaler = GradScaler(enabled=opt.use_amp)
 
 # 训练
 global_step = 0
+start_epoch = 0
 num_iters = len(data_loader) if opt.num_iters < 0 else opt.num_iters
-loss_min = sys.maxsize
+loss_min = sys.maxsize  # 全局最小epoch损失
 
-for epoch in range(opt.num_epochs):
+if opt.resume:
+    print("======加载恢复点======")
+    model = Total(opt=opt).to(opt.device)
+    model, start_epoch, optimizer, scaler, global_step, loss_min = load_model(model, opt.load_model, optimizer)
+
+for epoch in range(start_epoch, opt.num_epochs):
     print(f"\nEpoch {epoch + 1}/{opt.num_epochs}")
-
+    epoch_loss_total = 0
     # 创建进度条
     pbar = tqdm(data_loader, total=num_iters, desc=f"Epoch {epoch + 1}",
                 bar_format='{l_bar}{bar:20}{r_bar}{bar:-20b}')
@@ -123,10 +129,14 @@ for epoch in range(opt.num_epochs):
         })
 
         global_step += 1
+        epoch_loss_total += total_loss.item()
+
     # 更新最小损失并保存模型
-    if total_loss.item() < loss_min:
-        loss_min = total_loss.item()
-        save_model(model=model, save_path='runs/best_model.pth', epoch=epoch, optimizer=optimizer)
+    epoch_loss_total /= len(data_loader)
+    if epoch_loss_total < loss_min:
+        loss_min = epoch_loss_total
+        save_model(model=model, save_path='runs/best_model.pth', epoch=epoch, optimizer=optimizer, scaler=scaler,
+                   global_step=global_step, loss_min=loss_min)
     pbar.close()  # 关闭当前epoch的进度条
 
 writer.close()

@@ -15,7 +15,7 @@ if __name__ == "__main__":
 
     from dataset.dataset_factory import get_dataset
     from models.genericloss import GenericLoss
-    from models.model_tools import save_model
+    from models.model_tools import save_model, load_model
     from models.total import Total
     from utils.opts import opts
 
@@ -69,18 +69,27 @@ if __name__ == "__main__":
     # 优化器
     optimizer = torch.optim.Adam(model.parameters(), opt.lr, amsgrad=True)
 
-    # 损失函数
-    Loss = GenericLoss(opt=opt)
-
     # AMP
     scaler = GradScaler(enabled=opt.use_amp)
 
+    # 损失函数
+    Loss = GenericLoss(opt=opt)
+
     # 训练
     global_step = 0
+    start_epoch = 0
     num_iters = len(data_loader) if opt.num_iters < 0 else opt.num_iters
-    loss_min = sys.maxsize
+    loss_min = sys.maxsize  # 全局最小epoch损失
 
-    for epoch in range(opt.num_epochs):
+    if opt.resume:
+        print("======加载恢复点======")
+        model = Total(opt=opt).to(opt.device)
+        model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
+        model, start_epoch, optimizer, scaler, global_step, loss_min = load_model(model, opt.resume, optimizer)
+
+    # 开始训练
+    for epoch in range(start_epoch, opt.num_epochs):
+        epoch_loss_total = 0
         train_sampler.set_epoch(epoch)  # 设置epoch保证shuffle正确性
         if local_rank == 0:
             pbar = tqdm(data_loader, total=num_iters, desc=f"Epoch {epoch + 1}",
@@ -146,14 +155,15 @@ if __name__ == "__main__":
                     'lr': f"{optimizer.param_groups[0]['lr']:.2e}",
                     'step': global_step
                 })
-
+            epoch_loss_total += global_loss
             global_step += 1
 
         if local_rank == 0:
-            if global_loss < loss_min:
-                loss_min = global_loss
+            epoch_loss_total /= len(data_loader)  # 计算这一个epoch的平均损失
+            if epoch_loss_total < loss_min:
+                loss_min = epoch_loss_total
                 save_model(model=model.module,  # 注意获取原始模型
-                           save_path='runs/best_model.pth',
+                           save_path=f'runs/best_model_{epoch}.pth',
                            epoch=epoch,
                            optimizer=optimizer)
             save_model(model=model.module,  # 注意获取原始模型
