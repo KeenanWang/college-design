@@ -139,7 +139,7 @@ if __name__ == "__main__":
             if local_rank == 0:
 
                 # TensorBoard日志记录
-                if global_step % 10 == 0:
+                if global_step % 100 == 0:
                     for name, value in loss_stats_rgb.items():
                         writer.add_scalar(f"RGBLoss/{name}", value.mean() / dist.get_world_size(), global_step)
                     for name, value in loss_stats_thermal.items():
