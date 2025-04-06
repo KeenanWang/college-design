@@ -54,6 +54,9 @@ class Total(nn.Module):
             temporal_fusion_rgb = self.temporal_fusion_rgb(rgb_processed, rgb_processed, hm_pre)
             temporal_fusion_thermal = self.temporal_fusion_thermal(thermal_processed, thermal_processed, hm_pre)
 
+        # temporal_fusion_rgb = rgb_processed + rgb_pre + hm_pre
+        # temporal_fusion_thermal = thermal_processed + thermal_pre + hm_pre
+
         # 过各自分支
         rgb_branch = self.rgb_branch(temporal_fusion_rgb)[-1]
         thermal_branch = self.thermal_branch(temporal_fusion_thermal)[-1]

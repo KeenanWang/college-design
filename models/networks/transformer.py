@@ -83,7 +83,9 @@ class TransformerEncoderLayer(nn.Module):
         x_att = self.multihead_attention(query=q, key=k, value=x_pre)[0]  # 提取注意力分数，【1】是注意力权重
         x = x + self.dropout(x_att)
         x = self.norm1(x)
+
         x_mix_hm = x + hm_pre
+
         x_new = self.linear2(self.dropout1(self.activation(self.linear1(x_mix_hm))))
         x = x + self.dropout2(x_new)
         x = self.norm2(x)

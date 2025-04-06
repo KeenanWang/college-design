@@ -9,8 +9,8 @@ class SingleUnitFusion(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(num_branch * c * h * w, 16),
             nn.ReLU(),
-            nn.Linear(16, num_branch * c * h * w),
-            nn.LayerNorm(num_branch * c * h * w),
+            nn.Linear(16, c * h * w),
+            nn.LayerNorm(c * h * w),
         )
 
     def forward(self, rgb, thermal, fusion, type_choose):
@@ -20,7 +20,9 @@ class SingleUnitFusion(nn.Module):
         x = torch.cat([x_rgb, x_thermal, x_fusion], dim=1)
         x_flattened = torch.flatten(x, 1)
 
-        x_rgb_weight, x_thermal_weight, x_fusion_weight = torch.split(
-            torch.softmax(self.fc(x_flattened).view(b_x, self.num_branch * c_x, h_x, w_x).contiguous(), 1), c_x, 1)
-        x_output = x_rgb_weight * x_rgb + x_thermal_weight * x_thermal + x_fusion_weight * x_fusion
+        # x_rgb_weight, x_thermal_weight, x_fusion_weight = torch.split(
+        #     torch.softmax(self.fc(x_flattened).view(b_x, self.num_branch * c_x, h_x, w_x).contiguous(), 1), c_x, 1)
+        # x_output = x_rgb_weight * x_rgb + x_thermal_weight * x_thermal + x_fusion_weight * x_fusion
+
+        x_output = self.fc(x_flattened)
         return x_output
