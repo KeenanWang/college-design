@@ -165,11 +165,11 @@ if __name__ == "__main__":
                 save_model(model=model.module,  # 注意获取原始模型
                            save_path=f'runs/best_model_{epoch}.pth',
                            epoch=epoch,
-                           optimizer=optimizer)
+                           optimizer=optimizer, scaler=scaler, global_step=global_step, loss_min=loss_min)
             save_model(model=model.module,  # 注意获取原始模型
                        save_path=f'runs/epoch_{epoch}.pth',
                        epoch=epoch,
-                       optimizer=optimizer)
+                       optimizer=optimizer, scaler=scaler, global_step=global_step, loss_min=loss_min)
             pbar.close()  # 关闭当前epoch的进度条
 
         if epoch in opt.lr_step:
