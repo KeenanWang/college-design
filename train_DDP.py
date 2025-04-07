@@ -79,9 +79,7 @@ if __name__ == "__main__":
 
     if opt.resume:
         print("======加载恢复点======")
-        model = Total(opt=opt).to(opt.device)
-        model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
-        model, start_epoch, optimizer, global_step, loss_min = load_model(model, opt.resume, optimizer)
+        model, start_epoch, optimizer, global_step, loss_min = load_model(model, opt.load_model, optimizer)
 
     # 开始训练
     for epoch in range(start_epoch, opt.num_epochs):

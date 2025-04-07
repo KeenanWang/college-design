@@ -60,7 +60,6 @@ loss_min = sys.maxsize  # 全局最小epoch损失
 
 if opt.resume:
     print("======加载恢复点======")
-    model = Total(opt=opt).to(opt.device)
     model, start_epoch, optimizer, global_step, loss_min = load_model(model, opt.load_model, optimizer)
 
 for epoch in range(start_epoch, opt.num_epochs):
@@ -130,7 +129,7 @@ for epoch in range(start_epoch, opt.num_epochs):
     epoch_loss_total /= len(data_loader)
     if epoch_loss_total < loss_min:
         loss_min = epoch_loss_total
-        save_model(model=model, save_path='runs/best_model.pth', epoch=epoch, optimizer=optimizer, scaler=scaler,
+        save_model(model=model, save_path='runs/best_model.pth', epoch=epoch, optimizer=optimizer,
                    global_step=global_step, loss_min=loss_min)
     pbar.close()  # 关闭当前epoch的进度条
 
