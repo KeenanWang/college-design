@@ -43,10 +43,10 @@ def load_model(model,
 
     if optimizer is not None:
         # 加载优化器状态
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer'])
 
         # 加载混合精度状态
-        scaler.load_state_dict(checkpoint['scaler_state_dict'])
+        scaler.load_state_dict(checkpoint['scaler'])
 
         # 获取训练状态信息
         epoch = checkpoint.get('epoch', 0)
