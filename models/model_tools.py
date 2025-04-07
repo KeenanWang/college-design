@@ -19,7 +19,6 @@ def load_model(model,
     model:       要加载的模型 (常规模型或DDP包装的模型)
     model_path:  检查点路径
     optimizer:   优化器对象 (可选)
-    scaler:      GradScaler对象 (可选)
     strict:      是否严格加载模型参数 (默认False)
     verbose:     是否显示加载详情 (默认True)
 

@@ -4,6 +4,7 @@ if __name__ == "__main__":
     import sys
 
     import torch.distributed as dist
+    from torch.cuda.amp import GradScaler, autocast
     from torch.nn.parallel import DistributedDataParallel as DDP
     from torch.utils.data.distributed import DistributedSampler
     from tqdm import tqdm
@@ -68,6 +69,9 @@ if __name__ == "__main__":
     # 优化器
     optimizer = torch.optim.Adam(model.parameters(), opt.lr, amsgrad=True)
 
+    # AMP
+    scaler = GradScaler(enabled=opt.use_amp)
+
     # 损失函数
     Loss = GenericLoss(opt=opt)
 
@@ -79,7 +83,9 @@ if __name__ == "__main__":
 
     if opt.resume:
         print("======加载恢复点======")
-        model, start_epoch, optimizer, global_step, loss_min = load_model(model, opt.load_model, optimizer)
+        model = Total(opt=opt).to(opt.device)
+        model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
+        model, start_epoch, optimizer, scaler, global_step, loss_min = load_model(model, opt.load_model, optimizer,scaler)
 
     # 开始训练
     for epoch in range(start_epoch, opt.num_epochs):
@@ -105,27 +111,29 @@ if __name__ == "__main__":
             pre_ir_img = batch.get('pre_ir_img', None)
             pre_hm = batch.get('pre_hm', None)
 
-            rgb_branch, thermal_branch, output = model(
-                batch['vi_image'],
-                batch['ir_image'],
-                pre_vi_img,
-                pre_ir_img,
-                pre_hm
-            )
+            with autocast(opt.use_amp):
+                rgb_branch, thermal_branch, output = model(
+                    batch['vi_image'],
+                    batch['ir_image'],
+                    pre_vi_img,
+                    pre_ir_img,
+                    pre_hm
+                )
 
-            # 计算损失
-            loss_rgb, loss_stats_rgb = Loss(rgb_branch, batch)
-            loss_thermal, loss_stats_thermal = Loss(thermal_branch, batch)
-            loss_output, loss_stats_output = Loss(output, batch)
-            total_loss = loss_rgb + loss_thermal + loss_output
+                # 计算损失
+                loss_rgb, loss_stats_rgb = Loss(rgb_branch, batch)
+                loss_thermal, loss_stats_thermal = Loss(thermal_branch, batch)
+                loss_output, loss_stats_output = Loss(output, batch)
+                total_loss = loss_rgb + loss_thermal + loss_output
 
-            dist.all_reduce(total_loss, op=dist.ReduceOp.SUM)
-            global_loss = total_loss.item() / dist.get_world_size()
+                dist.all_reduce(total_loss, op=dist.ReduceOp.SUM)
+                global_loss = total_loss.item() / dist.get_world_size()
 
             # 反向传播
             optimizer.zero_grad()
-            total_loss.backward()
-            optimizer.step()
+            scaler.scale(total_loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
 
             # 只在主进程保存模型和记录日志
             if local_rank == 0:
@@ -157,11 +165,11 @@ if __name__ == "__main__":
                 save_model(model=model.module,  # 注意获取原始模型
                            save_path=f'runs/best_model_{epoch}.pth',
                            epoch=epoch,
-                           optimizer=optimizer, global_step=global_step, loss_min=loss_min)
+                           optimizer=optimizer, scaler=scaler, global_step=global_step, loss_min=loss_min)
             save_model(model=model.module,  # 注意获取原始模型
                        save_path=f'runs/epoch_{epoch}.pth',
                        epoch=epoch,
-                       optimizer=optimizer, global_step=global_step, loss_min=loss_min)
+                       optimizer=optimizer, scaler=scaler, global_step=global_step, loss_min=loss_min)
             pbar.close()  # 关闭当前epoch的进度条
 
         if epoch in opt.lr_step:
