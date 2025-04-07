@@ -10,7 +10,6 @@ def create_model(opt):
 def load_model(model,
                model_path,
                optimizer=None,
-               scaler=None,
                strict=False,
                verbose=True):
     """
@@ -20,7 +19,6 @@ def load_model(model,
     model:       要加载的模型 (常规模型或DDP包装的模型)
     model_path:  检查点路径
     optimizer:   优化器对象 (可选)
-    scaler:      GradScaler对象 (可选)
     strict:      是否严格加载模型参数 (默认False)
     verbose:     是否显示加载详情 (默认True)
 
@@ -45,9 +43,6 @@ def load_model(model,
         # 加载优化器状态
         optimizer.load_state_dict(checkpoint['optimizer'])
 
-        # 加载混合精度状态
-        scaler.load_state_dict(checkpoint['scaler'])
-
         # 获取训练状态信息
         epoch = checkpoint.get('epoch', 0)
         global_step = checkpoint.get('global_step', 0)
@@ -59,14 +54,14 @@ def load_model(model,
             print(f"  恢复训练起始周期: {epoch + 2} (已训练{epoch + 1}个周期)")
             print(f"  全局训练步数: {global_step}")
             print(f"  历史最小损失: {loss_min:.4f}")
-        return model, epoch + 1, optimizer, scaler, global_step, loss_min
+        return model, epoch + 1, optimizer, global_step, loss_min
 
     else:
         # 一般加载函数
         return model
 
 
-def save_model(model, save_path, epoch, optimizer=None, scaler=None, global_step=None, loss_min=None):
+def save_model(model, save_path, epoch, optimizer=None, global_step=None, loss_min=None):
     if isinstance(model, torch.nn.DataParallel):
         state_dict = model.module.state_dict()
     else:
@@ -75,7 +70,6 @@ def save_model(model, save_path, epoch, optimizer=None, scaler=None, global_step
             'state_dict': state_dict, }
     if optimizer is not None:
         data['optimizer'] = optimizer.state_dict()
-        data['scaler'] = scaler.state_dict()
         data['global_step'] = global_step
         data['loss_min'] = loss_min
     torch.save(data, save_path)
