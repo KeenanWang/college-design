@@ -238,6 +238,9 @@ class DLA(nn.Module):
                            level_root=True, root_residual=residual_root)
         self.level5 = Tree(levels[5], block, channels[4], channels[5], 2,
                            level_root=True, root_residual=residual_root)
+        self.fc = nn.Conv2d(
+            self.channels[-1], num_classes,
+            kernel_size=1, stride=1, padding=0, bias=True)  # 没有用到，但是得存在
         if opt.pre_img:
             self.pre_img_layer = nn.Sequential(
                 nn.Conv2d(3, channels[0], kernel_size=7, stride=1,

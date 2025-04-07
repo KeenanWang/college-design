@@ -52,9 +52,6 @@ optimizer = torch.optim.Adam(model.parameters(), opt.lr)
 # 损失函数
 Loss = GenericLoss(opt=opt)
 
-# AMP
-scaler = GradScaler(enabled=opt.use_amp)
-
 # 训练
 global_step = 0
 start_epoch = 0
@@ -64,7 +61,7 @@ loss_min = sys.maxsize  # 全局最小epoch损失
 if opt.resume:
     print("======加载恢复点======")
     model = Total(opt=opt).to(opt.device)
-    model, start_epoch, optimizer, scaler, global_step, loss_min = load_model(model, opt.load_model, optimizer)
+    model, start_epoch, optimizer, global_step, loss_min = load_model(model, opt.load_model, optimizer)
 
 for epoch in range(start_epoch, opt.num_epochs):
     print(f"\nEpoch {epoch + 1}/{opt.num_epochs}")
@@ -89,26 +86,24 @@ for epoch in range(start_epoch, opt.num_epochs):
         pre_ir_img = batch.get('pre_ir_img', None)
         pre_hm = batch.get('pre_hm', None)
 
-        with autocast(opt.use_amp):
-            rgb_output, thermal_output, output = model(
-                batch['vi_image'],
-                batch['ir_image'],
-                pre_vi_img,
-                pre_ir_img,
-                pre_hm
-            )
+        rgb_output, thermal_output, output = model(
+            batch['vi_image'],
+            batch['ir_image'],
+            pre_vi_img,
+            pre_ir_img,
+            pre_hm
+        )
 
-            # 计算损失
-            loss_rgb, loss_stats_rgb = Loss(rgb_output, batch)
-            loss_thermal, loss_stats_thermal = Loss(thermal_output, batch)
-            loss_output, loss_stats_output = Loss(output, batch)
-            total_loss = loss_rgb + loss_thermal + loss_output
+        # 计算损失
+        loss_rgb, loss_stats_rgb = Loss(rgb_output, batch)
+        loss_thermal, loss_stats_thermal = Loss(thermal_output, batch)
+        loss_output, loss_stats_output = Loss(output, batch)
+        total_loss = loss_rgb + loss_thermal + loss_output
 
         # 反向传播
         optimizer.zero_grad()
-        scaler.scale(total_loss).backward()
-        scaler.step(optimizer)
-        scaler.update()
+        total_loss.backward()
+        optimizer.step()
 
         # # TensorBoard日志记录
         # if global_step % 10 == 0:
