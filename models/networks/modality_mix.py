@@ -3,19 +3,19 @@ import torch.nn as nn
 
 
 class ModalityMix(nn.Module):
-    def __init__(self):
+    def __init__(self, in_dims):
         super().__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
         # rgb提取
-        self.fc_v = nn.Linear(3, 3)
+        self.fc_v = nn.Linear(in_dims, in_dims)
 
         # 融合
-        self.fc_mix = nn.Linear(3, 3)
-        self.fc_mix_v = nn.Linear(3, 3)
-        self.fc_mix_t = nn.Linear(3, 3)
+        self.fc_mix = nn.Linear(in_dims, in_dims)
+        self.fc_mix_v = nn.Linear(in_dims, in_dims)
+        self.fc_mix_t = nn.Linear(in_dims, in_dims)
 
         # thermal提取
-        self.fc_t = nn.Linear(3, 3)
+        self.fc_t = nn.Linear(in_dims, in_dims)
 
     def forward(self, rgb, thermal):
         # rgb分支

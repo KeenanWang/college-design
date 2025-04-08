@@ -13,10 +13,9 @@ class FusionBranch(nn.Module):
     def __init__(self, opt):
         super().__init__()
         # 降维
-        self.cnn_down_rgb = nn.Conv2d(in_channels=16, out_channels=3, kernel_size=1)
-        self.cnn_down_thermal = nn.Conv2d(in_channels=16, out_channels=3, kernel_size=1)
+        self.cnn_down = nn.Conv2d(in_channels=16, out_channels=3, kernel_size=1)
         # 模态融合器
-        self.modality_mix = ModalityMix()
+        self.modality_mix = ModalityMix(in_dims=16)
         # dla
         self.dla = DLASeg(num_layers=34, heads={'hm': 2, 'ltrb_amodal': 4, 'reg': 2, 'tracking': 2, 'wh': 2},
                           head_convs={'hm': [256], 'ltrb_amodal': [256], 'reg': [256], 'tracking': [256], 'wh': [256]},
@@ -28,9 +27,20 @@ class FusionBranch(nn.Module):
                                         num_stacks=1, last_channel=64, opt=opt)
 
     def forward(self, rgb, thermal):
-        rgb_down = self.cnn_down_rgb(rgb)
-        thermal_down = self.cnn_down_thermal(thermal)
-        fuse = self.modality_mix(rgb_down, thermal_down)
+        fuse = self.modality_mix(rgb, thermal)
+        fuse = self.cnn_down(fuse)
         dla_output = self.dla(fuse)
         final = self.output_heads(dla_output)
         return final
+
+
+if __name__ == '__main__':
+    from utils.opts import opts
+    import torch
+
+    opt = opts().parse()
+    images = torch.randn(4, 16, 544, 960)
+    net = FusionBranch(opt=opt)
+    output = net(images, images)
+    for each in output[0]:
+        print(each, output[0][each].shape)
