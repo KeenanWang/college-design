@@ -63,6 +63,7 @@ if __name__ == "__main__":
 
     # 模型
     model = Total(opt=opt).to(opt.device)
+    model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
     model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
 
     # 优化器

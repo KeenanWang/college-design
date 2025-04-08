@@ -7,15 +7,35 @@ class ModalityMix(nn.Module):
         super().__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
         # rgb提取
-        self.fc_v = nn.Linear(in_dims, in_dims)
+        self.fc_v = nn.Sequential(
+            nn.Linear(in_dims, in_dims),
+            nn.LayerNorm(in_dims),
+            nn.ReLU(),
+        )
 
         # 融合
-        self.fc_mix = nn.Linear(in_dims, in_dims)
-        self.fc_mix_v = nn.Linear(in_dims, in_dims)
-        self.fc_mix_t = nn.Linear(in_dims, in_dims)
+        self.fc_mix = nn.Sequential(
+            nn.Linear(in_dims, in_dims),
+            nn.LayerNorm(in_dims),
+            nn.ReLU(),
+        )
+        self.fc_mix_v = nn.Sequential(
+            nn.Linear(in_dims, in_dims),
+            nn.LayerNorm(in_dims),
+            nn.ReLU(),
+        )
+        self.fc_mix_t = nn.Sequential(
+            nn.Linear(in_dims, in_dims),
+            nn.LayerNorm(in_dims),
+            nn.ReLU(),
+        )
 
         # thermal提取
-        self.fc_t = nn.Linear(in_dims, in_dims)
+        self.fc_t = nn.Sequential(
+            nn.Linear(in_dims, in_dims),
+            nn.LayerNorm(in_dims),
+            nn.ReLU(),
+        )
 
     def forward(self, rgb, thermal):
         # rgb分支
@@ -59,5 +79,5 @@ class ModalityMix(nn.Module):
 if __name__ == '__main__':
     rgb = torch.randn(1, 3, 544, 960)
     thermal = torch.randn(1, 3, 544, 960)
-    model = ModalityMix()
+    model = ModalityMix(16)
     print(model(rgb, thermal).shape)  # 输出: torch.Size([1, 3, 544, 960])
