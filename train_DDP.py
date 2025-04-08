@@ -161,7 +161,7 @@ if __name__ == "__main__":
                            optimizer=optimizer, global_step=global_step, loss_min=loss_min)
                 print(f"最佳模型为{epoch}，其损失为{loss_min}")
             save_model(model=model.module,  # 注意获取原始模型
-                       save_path=f'runs/epoch_{epoch}.pth',
+                       save_path=f'runs/last.pth',
                        epoch=epoch,
                        optimizer=optimizer, global_step=global_step, loss_min=loss_min)
             pbar.close()  # 关闭当前epoch的进度条
