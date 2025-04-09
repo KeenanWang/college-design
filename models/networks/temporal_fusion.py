@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+from models.networks.position_encoding import PositionEmbeddingSine
 from models.networks.transformer import TransformerEncoder, TransformerEncoderLayer
 from models.networks.embedding_layer import EmbeddingLayer
 
@@ -17,8 +18,9 @@ class TemporalFusionModule(nn.Module):
         # patch embedding
         self.embedding_layer = EmbeddingLayer(embed_dim=self.embedding_dim, kernel_stride=self.kernel_stride)
         # position embedding
-        self.pos_embedding = nn.Parameter(torch.zeros(1, self.num_patches + self.num_tokens, self.embedding_dim))
-        nn.init.trunc_normal_(self.pos_embedding, std=0.02)
+        self.pos_embedding = PositionEmbeddingSine(num_pos_feats=16 // 2, sine_type='lin_sine',
+                                                   avoid_aliazing=True, max_spatial_resolution=60)
+
         # 时序特征融合
         self.temporal_mix = TransformerEncoder(
             encoder_layer=TransformerEncoderLayer(
@@ -38,8 +40,9 @@ class TemporalFusionModule(nn.Module):
         x_pre = self.embedding_layer(x_pre)
         hm_pre = self.embedding_layer(hm_pre)
         # 位置编码添加
-        x = x + self.pos_embedding
-        x_pre = x_pre + self.pos_embedding
+        pos_embedding = self.pos_embedding(x)
+        x = x + pos_embedding
+        x_pre = x_pre + pos_embedding
         # 时序特征融合
         t_mix = self.temporal_mix(x, x_pre, hm_pre)
         # 解码为原来的形状
@@ -56,6 +59,6 @@ if __name__ == '__main__':
     images = torch.randn(4, 16, 544, 960)
     hm = torch.randn(4, 16, 544, 960)
     b, c, h, w = images.shape
-    net = TemporalFusionModule(h, w, opt.embedding_dim,opt.kernel_stride)
+    net = TemporalFusionModule(h, w, opt.embedding_dim, opt.kernel_stride)
     output = net(images, images, hm)
     print(output.shape)
