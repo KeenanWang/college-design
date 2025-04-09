@@ -124,7 +124,6 @@ if __name__ == "__main__":
             global_loss = total_loss.item() / dist.get_world_size()
 
             # 反向传播
-            print('反向传播了.')
             optimizer.zero_grad()
             total_loss.backward()
             optimizer.step()
@@ -140,38 +139,38 @@ if __name__ == "__main__":
                         writer.add_scalar(f"ThermalLoss/{name}", value.mean(), global_step)
                     for name, value in loss_stats_output.items():
                         writer.add_scalar(f"OutputLoss/{name}", value.mean(), global_step)
-                        writer.add_scalar("Global_Loss", global_loss, global_step)
-                        writer.add_scalar("Params/lr", optimizer.param_groups[0]['lr'], global_step)
+                    writer.add_scalar("Global_Loss", global_loss, global_step)
+                    writer.add_scalar("Params/lr", optimizer.param_groups[0]['lr'], global_step)
 
-                    # 更新进度条信息
-                    pbar.set_postfix({
-                        'loss': f"{global_loss:.4f}",
-                        'lr': f"{optimizer.param_groups[0]['lr']:.2e}",
-                        'step': global_step
-                    })
-                epoch_loss_total += global_loss
-                global_step += 1
+                # 更新进度条信息
+                pbar.set_postfix({
+                    'loss': f"{global_loss:.4f}",
+                    'lr': f"{optimizer.param_groups[0]['lr']:.2e}",
+                    'step': global_step
+                })
+            epoch_loss_total += global_loss
+            global_step += 1
 
-            if local_rank == 0:
-                epoch_loss_total /= len(data_loader)  # 计算这一个epoch的平均损失
-                if epoch_loss_total < loss_min:
-                    loss_min = epoch_loss_total
-                    save_model(model=model.module,  # 注意获取原始模型
-                               save_path=f'runs/best_model.pth',
-                               epoch=epoch,
-                               optimizer=optimizer, global_step=global_step, loss_min=loss_min)
-                    print(f"最佳模型为{epoch}，其损失为{loss_min}")
+        if local_rank == 0:
+            epoch_loss_total /= len(data_loader)  # 计算这一个epoch的平均损失
+            if epoch_loss_total < loss_min:
+                loss_min = epoch_loss_total
                 save_model(model=model.module,  # 注意获取原始模型
-                           save_path=f'runs/last.pth',
+                           save_path=f'runs/best_model.pth',
                            epoch=epoch,
                            optimizer=optimizer, global_step=global_step, loss_min=loss_min)
-                pbar.close()  # 关闭当前epoch的进度条
+                print(f"最佳模型为{epoch}，其损失为{loss_min}")
+            save_model(model=model.module,  # 注意获取原始模型
+                       save_path=f'runs/last.pth',
+                       epoch=epoch,
+                       optimizer=optimizer, global_step=global_step, loss_min=loss_min)
+            pbar.close()  # 关闭当前epoch的进度条
 
-            if epoch in opt.lr_step:
-                lr = opt.lr * (0.1 ** (opt.lr_step.index(epoch) + 1))
-                print('Drop LR to', lr)
-                for param_group in optimizer.param_groups:
-                    param_group['lr'] = lr
-        if local_rank == 0:
-            writer.close()
-        dist.destroy_process_group()
+        if epoch in opt.lr_step:
+            lr = opt.lr * (0.1 ** (opt.lr_step.index(epoch) + 1))
+            print('Drop LR to', lr)
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = lr
+    if local_rank == 0:
+        writer.close()
+    dist.destroy_process_group()
