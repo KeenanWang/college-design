@@ -43,6 +43,7 @@ data_loader = torch.utils.data.DataLoader(
 
 # 模型
 model = Total(opt=opt)
+model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
 model = model.to(opt.device)
 print(sum(p.numel() for p in model.parameters()))
 
