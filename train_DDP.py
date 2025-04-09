@@ -124,6 +124,7 @@ if __name__ == "__main__":
             global_loss = total_loss.item() / dist.get_world_size()
 
             # 反向传播
+            print('反向传播了.')
             optimizer.zero_grad()
             total_loss.backward()
             optimizer.step()
