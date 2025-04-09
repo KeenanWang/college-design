@@ -17,9 +17,9 @@ class TemporalFusionModule(nn.Module):
         self.kernel_stride = kernel_stride
         # patch embedding
         self.embedding_layer = EmbeddingLayer(embed_dim=self.embedding_dim, kernel_stride=self.kernel_stride)
-        # position embedding
-        self.pos_embedding = PositionEmbeddingSine(num_pos_feats=16 // 2, sine_type='lin_sine',
-                                                   avoid_aliazing=True, max_spatial_resolution=60)
+        # position encoding
+        self.pos_encoding = PositionEmbeddingSine(num_pos_feats=16 // 2, sine_type='lin_sine',
+                                                  avoid_aliazing=True, max_spatial_resolution=60)
 
         # 时序特征融合
         self.temporal_mix = TransformerEncoder(
@@ -33,16 +33,25 @@ class TemporalFusionModule(nn.Module):
             norm=nn.LayerNorm(self.embedding_dim)
         )
 
+    def get_positional_encoding(self, feat):
+        b, _, h, w = feat.shape
+
+        mask = torch.zeros((b, h, w), dtype=torch.bool, device=feat.device)
+        pos = self.pos_encoding(mask)
+        return pos.reshape(b, -1, h, w)
+
     def forward(self, x, x_pre, hm_pre=None):
         b, c, h, w = x.shape
+        pos_encoding = self.get_positional_encoding(x)
+
         # patch embedding
         x = self.embedding_layer(x)
         x_pre = self.embedding_layer(x_pre)
         hm_pre = self.embedding_layer(hm_pre)
+        pos_encoding = self.embedding_layer(pos_encoding)
         # 位置编码添加
-        pos_embedding = self.pos_embedding(x)
-        x = x + pos_embedding
-        x_pre = x_pre + pos_embedding
+        x = x + pos_encoding
+        x_pre = x_pre + pos_encoding
         # 时序特征融合
         t_mix = self.temporal_mix(x, x_pre, hm_pre)
         # 解码为原来的形状
