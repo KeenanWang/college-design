@@ -41,12 +41,12 @@ class ModalityMix(nn.Module):
         # rgb分支
         rgb_v = self.avg_pool(rgb).squeeze(-1).squeeze(-1)
         rgb_v = self.fc_v(rgb_v)
-        rgb_v = torch.sigmoid(rgb_v).unsqueeze(-1).unsqueeze(-1) * rgb
+        rgb_v = torch.softmax(rgb_v, 1).unsqueeze(-1).unsqueeze(-1) * rgb
 
         # thermal分支
         thermal_t = self.avg_pool(thermal).squeeze(-1).squeeze(-1)
         thermal_t = self.fc_t(thermal_t)
-        thermal_t = torch.sigmoid(thermal_t).unsqueeze(-1).unsqueeze(-1) * thermal
+        thermal_t = torch.softmax(thermal_t, 1).unsqueeze(-1).unsqueeze(-1) * thermal
 
         # fuse分支
         # Squeeze: 全局平均池化
@@ -60,7 +60,7 @@ class ModalityMix(nn.Module):
 
         # 拼接并计算权重
         combined = torch.cat([v.unsqueeze(1), t.unsqueeze(1)], dim=1)  # [1,2,3]
-        weights = torch.sigmoid(combined)  # 对通道维度做softmax
+        weights = torch.softmax(combined, 1)  # 对通道维度做softmax
         v_weight, t_weight = weights[:, 0, :], weights[:, 1, :]  # [1,3]
 
         # 调整权重形状以匹配特征图
