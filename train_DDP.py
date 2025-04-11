@@ -173,4 +173,5 @@ if __name__ == "__main__":
                 param_group['lr'] = lr
     if local_rank == 0:
         writer.close()
+        os.system('./test.sh')
     dist.destroy_process_group()
