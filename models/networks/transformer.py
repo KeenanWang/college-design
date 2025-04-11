@@ -51,9 +51,9 @@ class TransformerEncoder(nn.Module):
         self.layers = nn.ModuleList([copy.deepcopy(encoder_layer) for _ in range(num_layers)])
         self.norm = norm
 
-    def forward(self, x, x_pre, hm_pre):
+    def forward(self, x, x_pre, hm_pre, pos):
         for layer in self.layers:
-            x = layer(x, x_pre, hm_pre)
+            x = layer(x, x_pre, hm_pre, pos)
         return x
 
 
