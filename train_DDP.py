@@ -174,3 +174,5 @@ if __name__ == "__main__":
     if local_rank == 0:
         writer.close()
     dist.destroy_process_group()
+    # 引入测试
+    os.system('./test.sh')

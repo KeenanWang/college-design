@@ -51,9 +51,9 @@ class TransformerEncoder(nn.Module):
         self.layers = nn.ModuleList([copy.deepcopy(encoder_layer) for _ in range(num_layers)])
         self.norm = norm
 
-    def forward(self, x, x_pre, hm_pre, pos):
+    def forward(self, x, x_pre, hm_pre):
         for layer in self.layers:
-            x = layer(x, x_pre, hm_pre, pos)
+            x = layer(x, x_pre, hm_pre)
         return x
 
 
@@ -77,9 +77,9 @@ class TransformerEncoderLayer(nn.Module):
     def with_pos_embed(self, tensor, pos=None):
         return tensor + pos if pos is not None else tensor
 
-    def forward(self, x, x_pre, hm_pre, pos_encoding):
-        q = x + pos_encoding
-        k = x_pre + pos_encoding
+    def forward(self, x, x_pre, hm_pre):
+        q = x
+        k = x_pre
         x_att = self.multihead_attention(query=q, key=k, value=x_pre)[0]  # 提取注意力分数，【1】是注意力权重
         x = x + self.dropout(x_att)
         x = self.norm1(x)

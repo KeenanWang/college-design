@@ -9,7 +9,7 @@ class SingleUnitFusion(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(num_branch * c * h * w, 16),
             nn.ReLU(),
-            nn.Linear(16, 3),
+            nn.Linear(16, num_branch),
             nn.Softmax(dim=1),
         )
 
