@@ -49,11 +49,8 @@ class TemporalFusionModule(nn.Module):
         x_pre = self.embedding_layer(x_pre)
         hm_pre = self.embedding_layer(hm_pre)
         pos_encoding = self.embedding_layer(pos_encoding)
-        # 位置编码添加
-        x = x + pos_encoding
-        x_pre = x_pre + pos_encoding
         # 时序特征融合
-        t_mix = self.temporal_mix(x, x_pre, hm_pre)
+        t_mix = self.temporal_mix(x, x_pre, hm_pre, pos_encoding)
         # 解码为原来的形状
         t_mix = t_mix.permute(0, 2, 1).view(b, self.embedding_dim, h // self.kernel_stride,
                                             w // self.kernel_stride).contiguous()
