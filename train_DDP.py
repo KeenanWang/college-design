@@ -134,11 +134,11 @@ if __name__ == "__main__":
                 # TensorBoard日志记录
                 if global_step % 100 == 0:
                     for name, value in loss_stats_rgb.items():
-                        writer.add_scalar(f"RGBLoss/{name}", value.mean() / dist.get_world_size(), global_step)
+                        writer.add_scalar(f"RGBLoss/{name}", value.mean(), global_step)
                     for name, value in loss_stats_thermal.items():
-                        writer.add_scalar(f"ThermalLoss/{name}", value.mean() / dist.get_world_size(), global_step)
+                        writer.add_scalar(f"ThermalLoss/{name}", value.mean(), global_step)
                     for name, value in loss_stats_output.items():
-                        writer.add_scalar(f"OutputLoss/{name}", value.mean() / dist.get_world_size(), global_step)
+                        writer.add_scalar(f"OutputLoss/{name}", value.mean(), global_step)
                     writer.add_scalar("Global_Loss", global_loss, global_step)
                     writer.add_scalar("Params/lr", optimizer.param_groups[0]['lr'], global_step)
 
