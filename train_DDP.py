@@ -165,8 +165,6 @@ if __name__ == "__main__":
                        epoch=epoch,
                        optimizer=optimizer, global_step=global_step, loss_min=loss_min)
             pbar.close()  # 关闭当前epoch的进度条
-            # 引入测试
-            os.system('./test.sh')
 
         if epoch in opt.lr_step:
             lr = opt.lr * (0.1 ** (opt.lr_step.index(epoch) + 1))
@@ -175,4 +173,6 @@ if __name__ == "__main__":
                 param_group['lr'] = lr
     if local_rank == 0:
         writer.close()
+        # 引入测试
+        os.system('./test.sh')
     dist.destroy_process_group()
