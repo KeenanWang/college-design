@@ -31,7 +31,7 @@ class FusionBranch(nn.Module):
         fuse = self.cnn_down(fuse)
         dla_output = self.dla(fuse)
         final = self.output_heads(dla_output)
-        return final
+        return final, dla_output
 
 
 if __name__ == '__main__':

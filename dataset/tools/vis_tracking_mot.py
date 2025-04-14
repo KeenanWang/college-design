@@ -39,7 +39,7 @@ def draw_bbox1(img, bboxes, c=(255, 0, 255)):
 if __name__ == '__main__':
     result = {
         # 'fairmot_rgbt': "/data1/Datasets/Tracking/MOT/VTMOT/images/results/FairMOT/VTMOT_RGBT_9/",
-        'ours': "exp/tracking/VTMOT_PFTrack/results_mot_rgbt",
+        'ours': "exp_8/tracking/VTMOT_PFTrack/results_mot_rgbt",
         # 'ours': "/home/zhuyabin/MOT/CenterTrack/exp/tracking/VTMOT_fusion_early_V3_m/results_mot_rgbt_7",
         # # 'transtrack_rgbt': "/data1/Datasets/Tracking/MOT/VTMOT/images/results/TransTrack/RGBT/RGB-T_result_28/",
         # 'bytetrack_rgbt': "/home/zhuyabin/wangtao/ByteTrack-main/YOLOX_outputs/yolox_m_rgbt/track_results_VT4",
@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
     flag = 0
     # image_to_anns = defaultdict(list)
-    search_seq = 'wurenji-0303-09'
+    search_seq = 'wurenji-0305-13'
 
     for tracker, result_root in result.items():
         print(tracker)

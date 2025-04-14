@@ -32,7 +32,7 @@ class RgbBranch(nn.Module):
         dla_output = self.dla(t_mix)
         # 输出头
         final = self.output_heads(dla_output)
-        return final
+        return final, dla_output
 
 
 if __name__ == '__main__':

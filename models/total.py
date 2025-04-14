@@ -33,7 +33,7 @@ class Total(nn.Module):
         # 模态融合分支
         self.fusion_branch = FusionBranch(opt=opt)
         # 决策融合模块
-        self.decision_fuse = DecisionFuse(c=2, h=opt.input_h // opt.down_ratio, w=opt.input_w // opt.down_ratio)
+        self.decision_fuse = DecisionFuse()
 
     def forward(self, rgb, thermal, rgb_pre=None, thermal_pre=None, hm_pre=None):
         # 预处理
@@ -55,12 +55,13 @@ class Total(nn.Module):
             temporal_fusion_thermal = self.temporal_fusion_thermal(thermal_processed, thermal_processed, hm_pre)
 
         # 过各自分支
-        rgb_branch = self.rgb_branch(temporal_fusion_rgb)[-1]
-        thermal_branch = self.thermal_branch(temporal_fusion_thermal)[-1]
-        modality_fusion = self.fusion_branch(temporal_fusion_rgb, temporal_fusion_thermal)[-1]
+        rgb_branch, rgb_dla = self.rgb_branch(temporal_fusion_rgb)
+        thermal_branch, thermal_dla = self.thermal_branch(temporal_fusion_thermal)
+        modality_fusion, fusion_dla = self.fusion_branch(temporal_fusion_rgb, temporal_fusion_thermal)
 
         # 决策融合
-        final = self.decision_fuse(rgb_branch, thermal_branch, modality_fusion)
+        final = self.decision_fuse(rgb_branch[-1], thermal_branch[-1], modality_fusion[-1], rgb_dla[-1],
+                                   thermal_dla[-1], fusion_dla[-1])
         return [rgb_branch], [thermal_branch], [final]
 
 
